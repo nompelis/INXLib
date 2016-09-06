@@ -1,11 +1,9 @@
 # INXLib v0.1
 
-/*****************************************************************************
  INXlib v0.1
  A simple skeleton framework for building X11 windowed applications with XLib.
  It includes an OpenGL context for 3D graphics.
  Copyright 2016 Ioannis Nompelis
- *****************************************************************************/
 
 This is a very simple "library" to be used as a skeleton for building graphical
 applications for the X Window environment using X11 XLib functionality. It is
