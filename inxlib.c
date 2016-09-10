@@ -64,7 +64,7 @@ int xwindow_setup( struct my_xwin_vars *xvars,
                      GLX_GREEN_SIZE, 8,
                      GLX_BLUE_SIZE, 8,
                      GLX_DOUBLEBUFFER,
-                     GLX_DEPTH_SIZE, 16,
+                     GLX_DEPTH_SIZE, 24,
                      None };   // this line terminates the list
 
 
