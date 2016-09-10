@@ -115,6 +115,18 @@ int user_keyrelease( struct my_xwin_vars *xvars, void *data )
 }
 
 
+//
+// Generic function to be called when we trap and handle a MotionNotify event
+//
+int user_motionnotify( struct my_xwin_vars *xvars, void *data )
+{
+
+
+
+   return(0);
+}
+
+
 
 //
 // Function to specify callbacks (user must build this function)
@@ -149,6 +161,10 @@ int xwindow_user( struct my_xwin_vars *xvars )
    // specify a key-release handling function
    //
    xvars->callback_KeyRelease = user_keyrelease;
+   //
+   // specify a mouse movement handling function
+   //
+   xvars->callback_MotionNotify = user_motionnotify;
 
 
    return(0);
