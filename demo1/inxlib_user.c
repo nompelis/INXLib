@@ -1,5 +1,5 @@
 /******************************************************************************
- Copyright (c) 2016, Ioannis Nompelis
+ Copyright (c) 2016-2017, Ioannis Nompelis
  All rights reserved.
 
  Redistribution and use in source and binary forms, with or without any
@@ -85,7 +85,7 @@ int user_draw( struct my_xwin_vars *xvars, void *data )
 // arguments are passed to the actual configure function when it is invoked from
 // the function pointer in the main loop.)
 //
-int user_configure( struct my_xwin_vars *xvars, void *data )
+int user_configure( struct my_xwin_vars *xvars, XEvent *event )
 {
 
    return(0);
@@ -97,7 +97,7 @@ int user_configure( struct my_xwin_vars *xvars, void *data )
 // arguments are passed to the actual C++ function when it is invoked from
 // the function pointer in the main loop.)
 //
-int user_keypress( struct my_xwin_vars *xvars, void *data )
+int user_keypress( struct my_xwin_vars *xvars, XEvent *event )
 {
 
    return(0);
@@ -107,7 +107,7 @@ int user_keypress( struct my_xwin_vars *xvars, void *data )
 // Generic function to be called when we trap and handle a KeyRelease event
 // (Works similarly to the keypress function.)
 //
-int user_keyrelease( struct my_xwin_vars *xvars, void *data )
+int user_keyrelease( struct my_xwin_vars *xvars, XEvent *event )
 {
 
    return(0);
@@ -116,9 +116,9 @@ int user_keyrelease( struct my_xwin_vars *xvars, void *data )
 //
 // Generic function to be called when we trap and handle a MotionNotify event
 //
-int user_motionnotify( struct my_xwin_vars *xvars, void *data )
+int user_motionnotify( struct my_xwin_vars *xvars, XEvent *event )
 {
-   XButtonEvent *ep = (XButtonEvent *) data;
+   XButtonEvent *ep = (XButtonEvent *) event;
    static int ix = -1;
    static int iy = -1;
    float dx,dy;
