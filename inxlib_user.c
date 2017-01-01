@@ -62,7 +62,7 @@ int user_draw( struct my_xwin_vars *xvars, void *data )
 
    // swap the buffers to the frame we just rendered
    glXSwapBuffers( xvars->xdisplay, xvars->xwindow );
-   printf("THIS SHOULD HAVE PLOTTED SOMETHING \n");
+// printf("THIS SHOULD HAVE PLOTTED SOMETHING \n");
 
    return(0);
 }
@@ -74,11 +74,11 @@ int user_draw( struct my_xwin_vars *xvars, void *data )
 // arguments are passed to the actual configure function when it is invoked from
 // the function pointer in the main loop.)
 //
-int user_configure( struct my_xwin_vars *xvars, void *data )
+int user_configure( struct my_xwin_vars *xvars, XEvent *event )
 {
 #ifdef _CASE2_
    // we pass the pointers given to us and sit back and wait...
-   (void) ingl_widgets_root_configure( xvars, data );
+   (void) ingl_widgets_root_configure( xvars, (void *) event );
 #endif
 
    return(0);
@@ -90,11 +90,11 @@ int user_configure( struct my_xwin_vars *xvars, void *data )
 // arguments are passed to the actual C++ function when it is invoked from
 // the function pointer in the main loop.)
 //
-int user_keypress( struct my_xwin_vars *xvars, void *data )
+int user_keypress( struct my_xwin_vars *xvars, XEvent *event )
 {
 #ifdef _CASE2_
    // we pass the pointers given to us and sit back and wait...
-   (void) ingl_events_handle_keypress( xvars, data );
+   (void) ingl_events_handle_keypress( xvars, (void *) event );
 #endif
 
    return(0);
@@ -104,11 +104,11 @@ int user_keypress( struct my_xwin_vars *xvars, void *data )
 // Generic function to be called when we trap and handle a KeyRelease event
 // (Works similarly to the keypress function.)
 //
-int user_keyrelease( struct my_xwin_vars *xvars, void *data )
+int user_keyrelease( struct my_xwin_vars *xvars, XEvent *event )
 {
 #ifdef _CASE2_
    // we pass the pointers given to us and sit back and wait...
-   (void) ingl_events_handle_keyrelease( xvars, data );
+   (void) ingl_events_handle_keyrelease( xvars, (void *) event );
 #endif
 
    return(0);
@@ -118,9 +118,22 @@ int user_keyrelease( struct my_xwin_vars *xvars, void *data )
 //
 // Generic function to be called when we trap and handle a MotionNotify event
 //
-int user_motionnotify( struct my_xwin_vars *xvars, void *data )
+int user_motionnotify( struct my_xwin_vars *xvars, XEvent *event )
 {
 
+
+
+   return(0);
+}
+
+
+//
+// Generic function to be called when we trap and handle a FocusChange event
+//
+int user_focuschange( struct my_xwin_vars *xvars, XEvent *event )
+{
+   XFocusChangeEvent *ep = (XFocusChangeEvent *) event;
+   printf("Focus change event: %d \n", ep->type);
 
 
    return(0);
@@ -165,6 +178,11 @@ int xwindow_user( struct my_xwin_vars *xvars )
    // specify a mouse movement handling function
    //
    xvars->callback_MotionNotify = user_motionnotify;
+   //
+   // specify a focus-change handling function
+   //
+   xvars->callback_FocusIn = user_focuschange;
+   xvars->callback_FocusOut = user_focuschange;
 
 
    return(0);
