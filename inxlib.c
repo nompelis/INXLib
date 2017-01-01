@@ -319,7 +319,9 @@ int xwindow_eventtrap( struct my_xwin_vars *xvars )
         case Expose:
          fprintf(stderr," i  Got \"Expose\" event.\n");
 
-         if(xvars->callback_Expose != NULL) xvars->callback_Expose();
+         if(xvars->callback_Expose != NULL) {
+            xvars->callback_Expose( &event );
+         }
          break;
 
         case ConfigureNotify:
