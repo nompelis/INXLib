@@ -49,8 +49,8 @@ struct my_xwin_vars {
    int (*callback_ButtonRelease)( struct my_xwin_vars *, XEvent * );
    int (*callback_MotionNotify)( struct my_xwin_vars *, XEvent * );
    int (*callback_EnterNotify)( struct my_xwin_vars *, XEvent * );
-   int (*callback_FocusIn)( void );
-   int (*callback_FocusOut)( void );
+   int (*callback_FocusIn)( struct my_xwin_vars *, XEvent * );
+   int (*callback_FocusOut)( struct my_xwin_vars *, XEvent * );
 
    //---- pointer to the function that does the drawing
    int(*callback_DrawScreen)( struct my_xwin_vars *, void * );

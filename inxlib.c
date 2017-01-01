@@ -149,6 +149,8 @@ int xwindow_setup( struct my_xwin_vars *xvars,
    win_attr.override_redirect = False;
    win_attr.event_mask = StructureNotifyMask |
                          ExposureMask |
+                         FocusChangeMask |
+                         PointerMotionMask |
                          ButtonPressMask |
                          ButtonReleaseMask |
                          KeyPressMask |
@@ -185,6 +187,7 @@ int xwindow_setup( struct my_xwin_vars *xvars,
    XSelectInput( xvars->xdisplay, xvars->xwindow,
                 ExposureMask |
                 StructureNotifyMask |
+                FocusChangeMask |
                 PointerMotionMask |
                 ButtonPressMask |
                 ButtonReleaseMask |
@@ -461,13 +464,17 @@ int xwindow_eventtrap( struct my_xwin_vars *xvars )
         case FocusIn:
          fprintf(stderr," i  Got \"FocusIn\" event.\n");
 
-         if(xvars->callback_FocusIn != NULL) xvars->callback_FocusIn();
+         if(xvars->callback_FocusIn != NULL) {
+            xvars->callback_FocusIn( xvars, &event );
+         }
          break;
 
         case FocusOut:
          fprintf(stderr," i  Got \"FocusOut\" event.\n");
 
-         if(xvars->callback_FocusOut != NULL) xvars->callback_FocusOut();
+         if(xvars->callback_FocusOut != NULL) {
+            xvars->callback_FocusOut( xvars, &event );
+         }
          break;
 
       }
