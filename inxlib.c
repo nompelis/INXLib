@@ -2,7 +2,7 @@
  INXlib v0.1
  A simple skeleton framework for building X11 windowed applications with XLib.
  It includes an OpenGL context for 3D graphics.
- Copyright 2016 Ioannis Nompelis
+ Copyright 2016-2017 Ioannis Nompelis
  *****************************************************************************/
 
 #include <stdio.h>
@@ -225,6 +225,11 @@ int xwindow_setup( struct my_xwin_vars *xvars,
    //
    XFree( visinfo );
 
+   //
+   // Set the internal variable for user-guided termination of the library
+   //
+   xvars->iterm_loop = 0;
+
    return(0);
 }
 
@@ -391,6 +396,7 @@ int xwindow_eventtrap( struct my_xwin_vars *xvars )
             iresult = react_to_key_press(ikey, ishift_key, ictrl_key, ialt_key);
             if(iresult == -1) {
                iend = 1;     // exit mechanism
+               printf("Exiting From the inxlib.c exit mechanism \n");
             } else {
                // possibly do other things...
             }
@@ -496,6 +502,9 @@ int xwindow_eventtrap( struct my_xwin_vars *xvars )
 
       // call the function to draw the screen
       xvars->callback_DrawScreen( xvars, NULL );
+
+      // allow for a user termination condition to exit the loop
+      if( xvars->iterm_loop != 0 ) iend = 1;
    }
 
    return(0);

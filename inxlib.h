@@ -2,7 +2,7 @@
  INXlib v0.1
  A simple skeleton framework for building X11 windowed applications with XLib.
  It includes an OpenGL context for 3D graphics.
- Copyright 2016 Ioannis Nompelis
+ Copyright 2016-2017 Ioannis Nompelis
  *****************************************************************************/
 
 #ifndef _INXLIB_H_
@@ -54,6 +54,9 @@ struct my_xwin_vars {
 
    //---- pointer to the function that does the drawing
    int(*callback_DrawScreen)( struct my_xwin_vars *, void * );
+
+   //---- variable to allow for the user to terminate the event loop
+   int iterm_loop;
 };
 
 
