@@ -116,12 +116,42 @@ int user_keyrelease( struct my_xwin_vars *xvars, XEvent *event )
 
 
 //
+// Generic function to be called when we trap and handle a ButtonPress event
+//
+int user_buttonpress( struct my_xwin_vars *xvars, XEvent *event )
+{
+#ifdef _CASE2_
+   // we pass the pointers given to us and sit back and wait...
+   (void) ingl_events_handle_buttonpress( xvars, (void *) event );
+#endif
+
+   return(0);
+}
+
+
+//
+// Generic function to be called when we trap and handle a ButtonRelease event
+//
+int user_buttonrelease( struct my_xwin_vars *xvars, XEvent *event )
+{
+#ifdef _CASE2_
+   // we pass the pointers given to us and sit back and wait...
+   (void) ingl_events_handle_buttonrelease( xvars, (void *) event );
+#endif
+
+   return(0);
+}
+
+
+//
 // Generic function to be called when we trap and handle a MotionNotify event
 //
 int user_motionnotify( struct my_xwin_vars *xvars, XEvent *event )
 {
-
-
+#ifdef _CASE2_
+   // we pass the pointers given to us and sit back and wait...
+   (void) ingl_events_handle_motionnotify( xvars, (void *) event );
+#endif
 
    return(0);
 }
@@ -132,9 +162,9 @@ int user_motionnotify( struct my_xwin_vars *xvars, XEvent *event )
 //
 int user_focuschange( struct my_xwin_vars *xvars, XEvent *event )
 {
-   XFocusChangeEvent *ep = (XFocusChangeEvent *) event;
-   printf("Focus change event: %d \n", ep->type);
-
+#ifdef _CASE2_
+   (void) ingl_events_handle_focuschange( xvars, (void *) event );
+#endif
 
    return(0);
 }
@@ -183,6 +213,14 @@ int xwindow_user( struct my_xwin_vars *xvars )
    //
    xvars->callback_FocusIn = user_focuschange;
    xvars->callback_FocusOut = user_focuschange;
+   //
+   // specify a button-press handling function
+   //
+   xvars->callback_ButtonPress = user_buttonpress;
+   //
+   // specify a button-release handling function
+   //
+   xvars->callback_ButtonRelease = user_buttonrelease;
 
 
    return(0);

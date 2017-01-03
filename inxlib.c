@@ -292,13 +292,22 @@ int react_to_key_press(int ikey, int ishift, int ictrl, int ialt ) {
 // @details
 //
 // Function to handle X events that are trapped by an appropriately setup
-// X window. It contains a mechanism for graceful exit.
+// X window. It contains a mechanism for graceful exit. This function is meant
+// to trap events, pass them to handler functions, and assume that they will be
+// handled; handling is done by the software that uses this library as a front
+// end. This function can act on its own on top of "sending" all events for
+// handling, and this is the case here for illustration purposes. The function
+// keeps track of key-presses, etc, as needed, but all events pass to the
+// functions that have been assigned to the function-pointers by the user.
+// This function can terminate the loop on its own, or through a variable that
+// can be set in the back-end by the underlying software; the latter way should
+// be the proper behaviour.
 //
 // @author Ioannis Nompelis <nompelis@nobelware.com>
 */
 int xwindow_eventtrap( struct my_xwin_vars *xvars )
 {
-   Display *xdisplay = xvars->xdisplay;;
+   Display *xdisplay = xvars->xdisplay;
    int iend = 0;
    int ishift_key = 0, ialt_key = 0, ictrl_key = 0;
    int ileft_button = 0, iright_button = 0, imiddle_button = 0;
@@ -324,6 +333,8 @@ int xwindow_eventtrap( struct my_xwin_vars *xvars )
         case Expose:
          fprintf(stderr," i  Got \"Expose\" event.\n");
 
+         // This function can act on its own here...
+         // ...and/or dispatch the event to user-assigned functions for handling
          if(xvars->callback_Expose != NULL) {
             xvars->callback_Expose( &event );
          }
@@ -335,6 +346,8 @@ int xwindow_eventtrap( struct my_xwin_vars *xvars )
          // event.xconfigure.width;
          // event.xconfigure.height;
 
+         // This function can act on its own here...
+         // ...and/or dispatch the event to user-assigned functions for handling
          if(xvars->callback_ConfigureNotify != NULL)
             xvars->callback_ConfigureNotify( xvars, NULL );
          break;
@@ -342,12 +355,17 @@ int xwindow_eventtrap( struct my_xwin_vars *xvars )
         case MapNotify:
          fprintf(stderr," i  Got \"MapNotify\" event.\n");
 
+         // This function can act on its own here...
+         // ...and/or dispatch the event to user-assigned functions for handling
          if(xvars->callback_MapNotify != NULL) xvars->callback_MapNotify();
          break;
 
         case KeyPress:
          fprintf(stderr," i  Got \"KeyPress\" event.\n");
          ikey = XLookupKeysym(&event.xkey, 0);
+
+         // This function can act on its own here...
+         // ...and/or dispatch the event to user-assigned functions for handling
 
          // first trap control / alt / shift
          if(ikey == XK_Shift_L) {
@@ -497,11 +515,13 @@ int xwindow_eventtrap( struct my_xwin_vars *xvars )
       // sleep the remainder of time.
       // [stop timer call goes here]
 
-      // we impose an appropriate delay
+      // we impose an appropriate delay to maintain constant frame-rate
       usleep(isleep);
 
       // call the function to draw the screen
-      xvars->callback_DrawScreen( xvars, NULL );
+      if( xvars->callback_DrawScreen != NULL ) {
+         xvars->callback_DrawScreen( xvars, NULL );
+      }
 
       // allow for a user termination condition to exit the loop
       if( xvars->iterm_loop != 0 ) iend = 1;
