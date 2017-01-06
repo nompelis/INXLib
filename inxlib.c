@@ -336,7 +336,7 @@ int xwindow_eventtrap( struct my_xwin_vars *xvars )
          // This function can act on its own here...
          // ...and/or dispatch the event to user-assigned functions for handling
          if(xvars->callback_Expose != NULL) {
-            xvars->callback_Expose( &event );
+            xvars->callback_Expose( xvars, &event );
          }
          break;
 
@@ -349,7 +349,7 @@ int xwindow_eventtrap( struct my_xwin_vars *xvars )
          // This function can act on its own here...
          // ...and/or dispatch the event to user-assigned functions for handling
          if(xvars->callback_ConfigureNotify != NULL)
-            xvars->callback_ConfigureNotify( xvars, NULL );
+            xvars->callback_ConfigureNotify( xvars, &event );
          break;
 
         case MapNotify:
@@ -357,7 +357,9 @@ int xwindow_eventtrap( struct my_xwin_vars *xvars )
 
          // This function can act on its own here...
          // ...and/or dispatch the event to user-assigned functions for handling
-         if(xvars->callback_MapNotify != NULL) xvars->callback_MapNotify();
+         if(xvars->callback_MapNotify != NULL) {
+            xvars->callback_MapNotify( xvars, &event );
+         }
          break;
 
         case KeyPress:

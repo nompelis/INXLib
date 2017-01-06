@@ -40,9 +40,9 @@ struct my_xwin_vars {
    unsigned int font_width;
 
    //---- pointers to user-specified functions to provide callbacks (reactions)
-   int (*callback_Expose)( XEvent * );
+   int (*callback_Expose)( struct my_xwin_vars *, XEvent * );
    int (*callback_ConfigureNotify)( struct my_xwin_vars *, XEvent * );
-   int (*callback_MapNotify)( void );
+   int (*callback_MapNotify)( struct my_xwin_vars *, XEvent * );
    int (*callback_KeyPress)( struct my_xwin_vars *, XEvent * );
    int (*callback_KeyRelease)( struct my_xwin_vars *, XEvent * );
    int (*callback_ButtonPress)( struct my_xwin_vars *, XEvent * );
