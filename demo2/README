@@ -1,0 +1,14 @@
+This is a very simple code of what could be a simple 3D cat-scan image viewer.
+It is meant to demonstrate how the INXLib X11/OpenGL skeleton can be used as
+a framework for building 3D applications. This was built on top of v0.1.
+
+The OpenGL part of the programming is done in a very crude manner, not caring
+at all for efficiency, so that anyone studying the code can more easily follow
+the logic and details.
+
+Questions and comments are welcome. Modification and re-ddistribution of the
+code, if found useful, is permitted provided all terms of licensing are met.
+
+Happy hacking!
+
+IN 2017/05/25
