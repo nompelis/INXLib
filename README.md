@@ -24,3 +24,16 @@ essentials.
 
 IN 2016/09/06
 
+
+Two simple sample programs have been added to the repository to demonstrate
+how to use this library and what can be achieved with it and its simplicity.
+The first is a demo of what could become a simple game with a bouncing ball.
+One function is missing functionality to detect simple collisions such that
+the game is fully funcitonal; this is left as an exercise, and I welcome any
+implementations that finish the demo, and promise an appropriate reward.
+The second shows how one can use textures to display images. I have used a
+set of tomographic images to build this; the images are not included in the
+distribution at the moment.
+
+IN 2017/05/25
+
