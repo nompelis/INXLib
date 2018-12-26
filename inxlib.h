@@ -1,8 +1,8 @@
 /*****************************************************************************
- INXlib v0.1
+ INXlib v0.3
  A simple skeleton framework for building X11 windowed applications with XLib.
  It includes an OpenGL context for 3D graphics.
- Copyright 2016-2017 Ioannis Nompelis
+ Copyright 2016-2018 Ioannis Nompelis
  *****************************************************************************/
 
 #ifndef _INXLIB_H_
@@ -75,7 +75,8 @@ int xwindow_callbacks( struct my_xwin_vars *xvars );
 // A function to open an X window and allocate a GLX OpenGL context in it
 */
 int xwindow_setup( struct my_xwin_vars *xvars,
-                   int width, int height, int xpos, int ypos );
+                   int width, int height, int xpos, int ypos,
+                   int ithread, int irender, int iframe );
 
 /**
 // @brief

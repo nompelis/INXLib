@@ -1,8 +1,8 @@
 /*****************************************************************************
- INXlib v0.1
+ INXlib v0.3
  A simple skeleton framework for building X11 windowed applications with XLib.
  It includes an OpenGL context for 3D graphics.
- Copyright 2016-2017 Ioannis Nompelis
+ Copyright 2016-2018 Ioannis Nompelis
  *****************************************************************************/
 
 #include <stdio.h>
@@ -51,7 +51,8 @@ int xwindow_callbacks( struct my_xwin_vars *xvars )
 // @author Ioannis Nompelis <nompelis@nobelware.com>
 */
 int xwindow_setup( struct my_xwin_vars *xvars,
-                   int width, int height, int xpos, int ypos )
+                   int width, int height, int xpos, int ypos,
+                   int ithread, int irender, int iframe )
 {
    int ierr;
    XVisualInfo *visinfo;
@@ -69,13 +70,17 @@ int xwindow_setup( struct my_xwin_vars *xvars,
 
 
    //
-   // Initialize Xlib in multi-thread mode
-   // (this seems to be necessary if mutliple threads will use Xlib)
+   // Initialize Xlib in multi-thread mode if requested
+   // (this seems to be necessary if mutliple threads will use Xlib, but if
+   // the library is used by an application that has potentially made this
+   // call before, we cannot make this call. We give a choice to use users.)
    //
-   ierr = XInitThreads();
-   if(ierr == 0) {
-      fprintf(stderr," e  Could not get Xlib to work in multi-thread mode\n");
-      return(1);
+   if( ithread == 0 ) {
+      ierr = XInitThreads();
+      if(ierr == 0) {
+         fprintf(stderr," e  Could not get Xlib to work in multi-thread mode\n");
+         return(1);
+      }
    }
 
    //
@@ -145,8 +150,10 @@ int xwindow_setup( struct my_xwin_vars *xvars,
             XCreateColormap( xvars->xdisplay, xvars->xroot, visinfo->visual,
                              AllocNone);
    win_attr.cursor = None;  // May point to an allocated special cursor
-   win_attr.override_redirect = True;    // this makes the window solid!
    win_attr.override_redirect = False;
+   if( iframe == 1 )  {
+      win_attr.override_redirect = True;    // this makes the window solid!
+   }
    win_attr.event_mask = StructureNotifyMask |
                          ExposureMask |
                          FocusChangeMask |
@@ -206,10 +213,12 @@ int xwindow_setup( struct my_xwin_vars *xvars,
    // Associate this window with an OpenGL context (create the context)
    // Here we make the selection of whether we want direct rendering (with
    // hardware acceleration) or indirect rendering (with software).
-   // We will let this be hard-wired to indirect for now.
    //
-// xvars->glx_context = glXCreateContext( xvars->xdisplay, visinfo, NULL, True);
-   xvars->glx_context = glXCreateContext( xvars->xdisplay, visinfo, NULL,False);
+   if( irender == 1 ) {
+      xvars->glx_context = glXCreateContext( xvars->xdisplay, visinfo, NULL, True);
+   } else {
+      xvars->glx_context = glXCreateContext( xvars->xdisplay, visinfo, NULL,False);
+   }
    if(xvars->glx_context == NULL) {
       fprintf(stderr," e  Could not create GLX context!\n");
       XFree( visinfo );
