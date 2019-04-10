@@ -42,3 +42,19 @@ Modified the initial "setup" function for the main window to accept arguments
 to control behavriou that was hard-wired in v0.1.
 
 IN 2018/12/26
+
+
+Linux users using Nvidia drivers for the X11 setup will encounter a problem
+when attempting to run the existing "test.c" (or similar demo) that invokes
+the X window setup like so:
+
+   iret = xwindow_setup( &xvars, -1, -1, -1, -1, 0, 0, 0 );
+
+The Nvidia drivers do not operate with "indirect" (non-hardware-accelerated)
+rendering, and will fail with an obscure error. Modify the driver code to setup
+the X window with direct rendering enabled:
+
+   iret = xwindow_setup( &xvars, -1, -1, -1, -1, 0, 1, 0 );
+
+This is NOT presently the default in the driver code.
+IN 2019/04/10
