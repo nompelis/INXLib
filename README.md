@@ -1,9 +1,9 @@
-# INXLib v0.3
+# INXLib v0.4
 
- INXlib v0.3
+ INXlib v0.4
  A simple skeleton framework for building X11 windowed applications with XLib.
  It includes an OpenGL context for 3D graphics.
- Copyright 2016-2018 Ioannis Nompelis
+ Copyright 2016-2023 Ioannis Nompelis
 
 This is a very simple "library" to be used as a skeleton for building graphical
 applications for the X Window environment using X11 XLib functionality. It is
@@ -58,3 +58,14 @@ the X window with direct rendering enabled:
 
 This is NOT presently the default in the driver code.
 IN 2019/04/10
+
+
+The AMD drivers on Slckware64 15.0 (2022 release) also fail with indirect
+rendering. The following is the detault for setting up the window:
+
+   iret = xwindow_setup( &xvars, -1, -1, -1, -1, 0, 1, 0 );
+
+Updated the code to remove the X font handlign file, and combined everything
+in a single file.
+
+IN 2023/05/12
