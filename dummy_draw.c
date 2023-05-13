@@ -1,5 +1,6 @@
 #include <math.h>
 #include <string.h>
+#include <GL/glu.h>
 
 
 //
