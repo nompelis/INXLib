@@ -64,7 +64,7 @@ int user_draw( struct my_xwin_vars *xvars, void *data )
    glXSwapBuffers( xvars->xdisplay, xvars->xwindow );
 // printf("THIS SHOULD HAVE PLOTTED SOMETHING \n");
 
-   return(0);
+   return 0;
 }
 
 
@@ -81,7 +81,7 @@ int user_configure( struct my_xwin_vars *xvars, XEvent *event )
    (void) ingl_widgets_root_configure( xvars, (void *) event );
 #endif
 
-   return(0);
+   return 0;
 }
 
 //
@@ -97,7 +97,7 @@ int user_keypress( struct my_xwin_vars *xvars, XEvent *event )
    (void) ingl_events_handle_keypress( xvars, (void *) event );
 #endif
 
-   return(0);
+   return 0;
 }
 
 //
@@ -111,7 +111,7 @@ int user_keyrelease( struct my_xwin_vars *xvars, XEvent *event )
    (void) ingl_events_handle_keyrelease( xvars, (void *) event );
 #endif
 
-   return(0);
+   return 0;
 }
 
 
@@ -125,7 +125,7 @@ int user_buttonpress( struct my_xwin_vars *xvars, XEvent *event )
    (void) ingl_events_handle_buttonpress( xvars, (void *) event );
 #endif
 
-   return(0);
+   return 0;
 }
 
 
@@ -139,7 +139,7 @@ int user_buttonrelease( struct my_xwin_vars *xvars, XEvent *event )
    (void) ingl_events_handle_buttonrelease( xvars, (void *) event );
 #endif
 
-   return(0);
+   return 0;
 }
 
 
@@ -153,7 +153,7 @@ int user_motionnotify( struct my_xwin_vars *xvars, XEvent *event )
    (void) ingl_events_handle_motionnotify( xvars, (void *) event );
 #endif
 
-   return(0);
+   return 0;
 }
 
 
@@ -166,7 +166,7 @@ int user_focuschange( struct my_xwin_vars *xvars, XEvent *event )
    (void) ingl_events_handle_focuschange( xvars, (void *) event );
 #endif
 
-   return(0);
+   return 0;
 }
 
 
@@ -223,6 +223,6 @@ int xwindow_user( struct my_xwin_vars *xvars )
    xvars->callback_ButtonRelease = user_buttonrelease;
 
 
-   return(0);
+   return 0;
 }
 
