@@ -28,6 +28,10 @@
 //
 #include "dummy_draw.c"   // HACK TO TEST
 
+#ifdef _DEBUG_FONT_
+static int global_cursor_x=0, global_cursor_y=0, do_draw_cursor=0;
+#endif
+
 //
 // Generic function to be called for drawing
 // (The only reason this function is introduced is so that the appropriate
@@ -59,6 +63,14 @@ int user_draw( struct my_xwin_vars *xvars, void *data )
    (void) ingl_widgets_draw( xvars, data );
 #endif
 
+#ifdef _DEBUG_FONT_
+   if( do_draw_cursor ) {
+      glColor3f( 0.2, 1.0, 0.2 );
+      glWindowPos2i( global_cursor_x, xvars->win_height - global_cursor_y );
+      glCallLists( (GLsizei) strlen( "CURSOR" ), GL_UNSIGNED_BYTE, "CURSOR" );
+      do_draw_cursor=0;
+   }
+#endif
 
    // swap the buffers to the frame we just rendered
    glXSwapBuffers( xvars->xdisplay, xvars->xwindow );
@@ -151,6 +163,14 @@ int user_motionnotify( struct my_xwin_vars *xvars, XEvent *event )
 #ifdef _CASE2_
    // we pass the pointers given to us and sit back and wait...
    (void) ingl_events_handle_motionnotify( xvars, (void *) event );
+#endif
+
+#ifdef _DEBUG_FONT_
+   XButtonEvent *ep = (XButtonEvent *) event;
+   printf("X: %d   Y: %d \n", ep->x, ep->y );
+   global_cursor_x = ep->x + 20;
+   global_cursor_y = ep->y - 20;
+   do_draw_cursor=1;
 #endif
 
    return 0;
