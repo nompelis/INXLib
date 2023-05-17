@@ -103,6 +103,11 @@ int xwindow_user( struct my_xwin_vars *xvars );
 int xwindow_setupDefaultFont( struct my_xwin_vars *xvars, char *font_name );
 
 /** @brief
+ * A function to setup a Linux font for use in an OpenGL context
+ */
+int xwindow_setupLinuxFont( struct my_xwin_vars *xvars );
+
+/** @brief
  * A function to delete individual lists (derived from a font) from an OpenGL
  * context
  */

@@ -18,7 +18,8 @@ int main(int argc, char **argv) {
    if(iret != 0) exit(1);
 
    // making a font list (this is EXTRA)
-   iret = xwindow_setupDefaultFont( &xvars, (char *) "fixed" );
+// iret = xwindow_setupDefaultFont( &xvars, (char *) "fixed" );
+   iret = xwindow_setupLinuxFont( &xvars );
    if(iret != 0) exit(2);
 
    (void) xwindow_eventtrap( &xvars );

@@ -1,4 +1,5 @@
 DEBUG = -D_NO_DEBUG_ -D_NO_EVENT_DEBUG_
+DEBUG += -D   _DEBUG_FONT_
 
 ###### C
 CC = gcc
