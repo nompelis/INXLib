@@ -65,7 +65,7 @@ rendering. The following is the detault for setting up the window:
 
    iret = xwindow_setup( &xvars, -1, -1, -1, -1, 0, 1, 0 );
 
-Updated the code to remove the X font handlign file, and combined everything
+Updated the code to remove the X font handling file, and combined everything
 in a single file.
 
 IN 2023/05/12

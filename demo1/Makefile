@@ -15,11 +15,10 @@ LIBS = $(XLIBS) -lm
 
 all:
 	$(CC) -c $(DEBUG) $(COPTS) $(INCLUDE) ../inxlib.c
-	$(CC) -c $(DEBUG) $(COPTS) $(INCLUDE) ../inxfont.c
 	$(CC) -c $(DEBUG) $(COPTS) $(INCLUDE) -D_CASE3_ inxlib_user.c
 	$(CC) -c $(DEBUG) $(COPTS) $(INCLUDE) axissphere.c
 	$(CC)    $(DEBUG) $(COPTS) $(INCLUDE) test.c axissphere.o \
-           inxlib.o inxlib_user.o inxfont.o $(LIBS)
+           inxlib.o inxlib_user.o $(LIBS)
 
 clean:
 	rm -f *.o *.a a.out

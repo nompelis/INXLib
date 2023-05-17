@@ -42,7 +42,6 @@
 #include <unistd.h>
 
 #include "inxlib.h"
-#include "inxfont.h"
 
 struct my_game_vars {
    int im,jm;               // manifold discretization

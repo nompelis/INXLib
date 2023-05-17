@@ -42,7 +42,6 @@
 #include <unistd.h>
 
 #include "inxlib.h"
-#include "inxfont.h"
 
 struct my_image_vars {
    int img_num;

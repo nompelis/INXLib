@@ -43,7 +43,6 @@
 #include <unistd.h>
 
 #include "inxlib.h"
-#include "inxfont.h"
 
 #include "game.h"    // defines the struct
 
@@ -59,7 +58,7 @@ int main(int argc, char **argv) {
 
    // initialize Xlib and bring up a window with an OpenGL context
    sprintf(xvars.window_name, "OpenGL X Window (game demo)");
-   iret = xwindow_setup( &xvars, -1, -1, -1, -1, 0, 0, 0 );
+   iret = xwindow_setup( &xvars, -1, -1, -1, -1, 0, 1, 0 );
    if(iret != 0) exit(1);
 
    // making a font list (this is EXTRA)
