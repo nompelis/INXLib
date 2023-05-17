@@ -18,6 +18,18 @@
 
 /**
 // @brief
+// A struct that holds an X-windows font's variables
+*/
+struct my_xwin_font {
+   unsigned int base;
+   unsigned int max_char;
+   unsigned int min_char;
+   unsigned int height;
+   unsigned int width;
+};
+
+/**
+// @brief
 // The main struct that holds the X-windows related variables
 */
 struct my_xwin_vars {
@@ -38,6 +50,8 @@ struct my_xwin_vars {
    unsigned int font_min_char;
    unsigned int font_height;
    unsigned int font_width;
+   //---- additional fonts
+   struct my_xwin_font* fonts;    // user is responsible for cleaning up!
 
    //---- pointers to user-specified functions to provide callbacks (reactions)
    int (*callback_Expose)( struct my_xwin_vars *, XEvent * );
