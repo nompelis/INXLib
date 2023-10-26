@@ -7,7 +7,8 @@
 // Function to draw a reference box
 //
 
-int DrawGridbox() {
+int DrawGridbox()
+{
 
    GLfloat col[3];
    GLfloat d = 0.5;
@@ -85,7 +86,7 @@ int DrawGridbox() {
    glVertex3fv(x1);
    glEnd();
 
-   return(0);
+   return 0;
 }
 
 
@@ -98,15 +99,15 @@ void dummy_draw( int iloc_, int jloc_,
                     0.0, 0.0, 1.0, 0.0,
                     0.0, 0.0, 0.0, 1.0};
 
-   glShadeModel(GL_SMOOTH);
-   glHint(GL_PERSPECTIVE_CORRECTION_HINT, GL_NICEST);
+   glShadeModel( GL_SMOOTH );
+   glHint( GL_PERSPECTIVE_CORRECTION_HINT, GL_NICEST );
    glClearColor( 0.15, 0.15, 0.15, 1.0 );
-   glClearDepth(10.0);
-   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+   glClearDepth( 40.0 );
+   glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
 
    glViewport( iloc_, jloc_, width_, height_ );
 
-   glEnable(GL_SCISSOR_TEST);
+   glEnable( GL_SCISSOR_TEST );
    glScissor( (GLint) (iloc_ -1), (GLint) (jloc_ -1),
               (GLsizei) (width_ +1), (GLsizei) (height_ +1) );
 
@@ -175,7 +176,7 @@ void dummy_draw( int iloc_, int jloc_,
 }
 //--- set a perspective projection (over-writing the projection matrix)
    glLoadIdentity();              // reset the proj. matrix
-   gluPerspective( 30.0, ((GLfloat) width_)/((GLfloat) height_), -00.0, 40.0 );
+   gluPerspective( 30.0, ((GLfloat) width_)/((GLfloat) height_), 0.01, 40.0 );
 
    glMatrixMode(GL_MODELVIEW);    // Select the modelview matrix stack
    glLoadIdentity();              // reset the modelv. matrix
@@ -196,7 +197,7 @@ void dummy_draw( int iloc_, int jloc_,
    glDisable(GL_FOG);
 
 
-   glDisable(GL_SCISSOR_TEST);
+   glDisable( GL_SCISSOR_TEST );
 
    printf(" INFO: %d %d %d %d \n", iloc_, jloc_, width_, height_ );//HACK
 }
