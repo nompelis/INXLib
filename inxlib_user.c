@@ -242,6 +242,7 @@ int xwindow_user( struct my_xwin_vars *xvars )
    //
    xvars->callback_ButtonRelease = user_buttonrelease;
 
+// prepare the drawing (but no GL related things!)
 
    return 0;
 }
