@@ -22,6 +22,9 @@ int main(int argc, char **argv) {
    iret = xwindow_setupLinuxFont( &xvars );
    if(iret != 0) exit(2);
 
+   // perform all operations to setup any extra GL stuff before proceeding
+
+   // the main event loop
    (void) xwindow_eventtrap( &xvars );
 
    xwindow_close( &xvars ) ;
