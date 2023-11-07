@@ -132,7 +132,7 @@ int xwindow_setup( struct my_xwin_vars *xvars,
       xvars->win_ypos = xvars->win_height / 4;
    } else {
       xvars->win_width  = (unsigned int) width;
-      xvars->win_height =  (unsigned int) height;
+      xvars->win_height = (unsigned int) height;
       xvars->win_xpos = xpos;
       xvars->win_ypos = ypos;
    }
@@ -148,7 +148,7 @@ int xwindow_setup( struct my_xwin_vars *xvars,
    win_attr.border_pixel = 2;
    win_attr.colormap =
             XCreateColormap( xvars->xdisplay, xvars->xroot, visinfo->visual,
-                             AllocNone);
+                             AllocNone );
    win_attr.cursor = None;  // May point to an allocated special cursor
    win_attr.override_redirect = False;
    if( iframe == 1 )  {
