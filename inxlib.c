@@ -146,6 +146,7 @@ int xwindow_setup( struct my_xwin_vars *xvars,
    // etc.) The attribute mask lets the API know of which of the attributes
    // we provided.
    //
+   win_attr.background_pixmap = None;
    win_attr.background_pixel = 0;
    win_attr.border_pixel = 2;
    win_attr.colormap =
