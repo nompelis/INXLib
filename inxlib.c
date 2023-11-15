@@ -1,5 +1,5 @@
 /*****************************************************************************
- INXlib v0.4
+ INXlib v0.5
  A simple skeleton framework for building X11 windowed applications with XLib.
  It includes an OpenGL context for 3D graphics.
  Copyright 2016-2023 Ioannis Nompelis
@@ -56,10 +56,14 @@ int xwindow_setup( struct my_xwin_vars *xvars,
 {
    int ierr;
    XVisualInfo *visinfo;
+#ifndef _OLDSTYLE_
+   GLXFBConfig *fbconfig;
+#endif
    XSetWindowAttributes win_attr;
    unsigned long attr_mask;
 
    // the following array will be used for initialization
+#ifdef _OLDSTYLE_
    int glx_attr[] ={ GLX_RGBA,
                      GLX_RED_SIZE, 8,       // number signifies bits
                      GLX_GREEN_SIZE, 8,
@@ -69,7 +73,26 @@ int xwindow_setup( struct my_xwin_vars *xvars,
                      GLX_STENCIL_SIZE, 8,
                      GLX_DOUBLEBUFFER, True,
                      None };   // this line terminates the list
-
+#else
+   int glx_attr[] ={
+                     GLX_X_RENDERABLE, True,
+                     GLX_DRAWABLE_TYPE,
+                     GLX_WINDOW_BIT,
+                     GLX_RENDER_TYPE,
+                     GLX_RGBA_BIT,
+                     GLX_X_VISUAL_TYPE,
+                     GLX_TRUE_COLOR,
+                     GLX_RED_SIZE, 8,
+                     GLX_GREEN_SIZE, 8,
+                     GLX_BLUE_SIZE, 8,
+                     GLX_ALPHA_SIZE, 8,
+                     GLX_DEPTH_SIZE, 24,
+                     GLX_STENCIL_SIZE, 8,
+                     GLX_DOUBLEBUFFER, True,
+                     // GLX_SAMPLE_BUFFERS  , 1,
+                     // GLX_SAMPLES         , 4,
+                     None };   // this line terminates the list
+#endif
 
    //
    // Initialize Xlib in multi-thread mode if requested
@@ -80,7 +103,7 @@ int xwindow_setup( struct my_xwin_vars *xvars,
    if( ithread == 0 ) {
       ierr = XInitThreads();
       if( ierr == 0 ) {
-         fprintf( stderr, " e  Could not start in multi-thread mode\n" );
+         fprintf( stderr, " [Error]  Could not start in multi-thread mode\n" );
          return 1;
       }
    }
@@ -91,14 +114,14 @@ int xwindow_setup( struct my_xwin_vars *xvars,
    //
    xvars->xdisplay = XOpenDisplay( getenv("DISPLAY") );
    if( xvars->xdisplay == NULL ) {
-      fprintf( stderr, " e  Failed to open display.\n" );
+      fprintf( stderr, " [Error]  Failed to open display.\n" );
       return 2;
    }
 
    //
    // echo the number of screens on this X display
    //
-   fprintf( stderr, " i  The display has %d available screen(s)\n",
+   fprintf( stderr, " [INFO]  The display has %d available screen(s)\n",
             ScreenCount( xvars->xdisplay ) );
 
    //
@@ -108,18 +131,38 @@ int xwindow_setup( struct my_xwin_vars *xvars,
    xvars->xscreen = DefaultScreen( xvars->xdisplay );
    xvars->xroot   = RootWindow( xvars->xdisplay, xvars->xscreen );
 
+#ifndef _OLDSTYLE_
+   //
+   // retrieve a framebuffer configuration
+   //
+   int fbcount;
+   fbconfig = glXChooseFBConfig( xvars->xdisplay, xvars->xscreen, glx_attr,
+                                 &fbcount );
+   if( !fbconfig ) {
+      fprintf( stderr, " [Error]  Failed to retrieve a framebuffer config\n" );
+      XCloseDisplay( xvars->xdisplay );
+      xvars->xdisplay = NULL;
+      return 3;
+   } else {
+      fprintf( stderr, " [INFO]  Number of FB config: %d \n", fbcount );
+   }
+#endif
 
    //
    // allocate a structure to store the X display's visual info
    // from the attributes we requested
    //
+#ifdef _OLDSTYLE_
    visinfo = glXChooseVisual( xvars->xdisplay, xvars->xscreen, glx_attr );
+#else
+   visinfo = glXGetVisualFromFBConfig( xvars->xdisplay, fbconfig[0] );
+#endif
    if( !visinfo ) {
-      fprintf( stderr, " e Unable to find RGB, double-buffered visual\n" );
+      fprintf( stderr, " [Error]  Unable to find RGB, double-buffer visual\n" );
       // close connection to the Xserver
       XCloseDisplay( xvars->xdisplay );
       xvars->xdisplay = NULL;
-      return 3;
+      return 4;
    }
 
    //
@@ -178,15 +221,19 @@ int xwindow_setup( struct my_xwin_vars *xvars,
                         xvars->win_xpos,  xvars->win_ypos,
                         xvars->win_width, xvars->win_height, 0,
                         visinfo->depth, InputOutput,
-                        visinfo->visual, attr_mask, &win_attr);
+                        visinfo->visual, attr_mask, &win_attr );
    if( xvars->xwindow <= 0 ) {
-      fprintf( stderr, " e Unable to create window \n" );
+      fprintf( stderr, " [Error]  Unable to create window \n" );
+#ifndef _OLDSTYLE_
+      // drop FB configuration object(s)
+      XFree( fbconfig );
+#endif
       // drop visual info
       XFree( visinfo );
       // close connection to the Xserver
       XCloseDisplay( xvars->xdisplay );
       xvars->xdisplay = NULL;
-      return 4;
+      return 5;
    }
 
    XStoreName( xvars->xdisplay, xvars->xwindow, xvars->window_name );
@@ -217,24 +264,63 @@ int xwindow_setup( struct my_xwin_vars *xvars,
    // Here we make the selection of whether we want direct rendering (with
    // hardware acceleration) or indirect rendering (with software).
    //
+#ifdef _OLDSTYLE_
    if( irender == 1 ) {
       xvars->glx_context = glXCreateContext( xvars->xdisplay, visinfo, NULL, True);
    } else {
       xvars->glx_context = glXCreateContext( xvars->xdisplay, visinfo, NULL,False);
    }
+#else
+   //
+   // Create a modern OpenGL context
+   //
+   typedef GLXContext (*my_func)( Display*, GLXFBConfig, GLXContext,
+                                  Bool, const int* );
+   my_func glXCreateContextAttribsARB = NULL;
+   glXCreateContextAttribsARB = (my_func)
+           glXGetProcAddressARB( (const GLubyte*)"glXCreateContextAttribsARB" );
+
+   // This library does _not_ use the latest versions of the "core" profile
+   // because it uses display lists. This compromise allows for the modern
+   // programmable pipeline to be used _and_ the fixed pipeline rendering!
+   int context_attribs[] = {
+   // GLX_CONTEXT_MAJOR_VERSION_ARB, 4,   // Core profile (DO NOT USE)
+   // GLX_CONTEXT_MINOR_VERSION_ARB, 5,
+   // GLX_CONTEXT_PROFILE_MASK_ARB, GLX_CONTEXT_CORE_PROFILE_BIT_ARB,
+      GLX_CONTEXT_MAJOR_VERSION_ARB, 3,   // Compatibility profile
+      GLX_CONTEXT_MINOR_VERSION_ARB, 0,
+      GLX_CONTEXT_PROFILE_MASK_ARB, GLX_CONTEXT_COMPATIBILITY_PROFILE_BIT_ARB,
+      None
+   };
+
+   xvars->glx_context = glXCreateContextAttribsARB( xvars->xdisplay,
+                                                    fbconfig[0], NULL, True,
+                                                    context_attribs );
+#endif
    if( xvars->glx_context == NULL ) {
-      fprintf( stderr, " e  Could not create GLX context!\n" );
+      fprintf( stderr, " [Error]  Could not create GLX context!\n" );
+#ifndef _OLDSTYLE_
+      XFree( fbconfig );
+#endif
       XFree( visinfo );
       XDestroyWindow( xvars->xdisplay, xvars->xwindow );
       xvars->xwindow = 0;
       XCloseDisplay( xvars->xdisplay );
       xvars->xdisplay = NULL;
-      return 5;
+      return 6;
    }
+
+   //
+   // make this the current OpenGL context (does not harm)
+   //
+   glXMakeCurrent( xvars->xdisplay, xvars->xwindow, xvars->glx_context );
 
    //
    // Drop structures we no longer need
    //
+#ifndef _OLDSTYLE_
+   XFree( fbconfig );
+#endif
    XFree( visinfo );
 
    //
@@ -260,22 +346,23 @@ int xwindow_close( struct my_xwin_vars *xvars )
    //
    // Destroy the OpenGL context
    //
+   glXMakeCurrent( xvars->xdisplay, None, NULL );
    glXDestroyContext( xvars->xdisplay, xvars->glx_context );
-   fprintf( stderr,  " i  Released GLX context \n" );
+   fprintf( stderr, " [INFO]  Released GLX context \n" );
    xvars->glx_context = NULL;
 
    //
    // Destroy window
    //
    XDestroyWindow( xvars->xdisplay, xvars->xwindow );
-   fprintf( stderr,  " i  Destroyed X window \n" );
+   fprintf( stderr, " [INFO]  Destroyed X window \n" );
    xvars->xwindow = 0;
 
    //
    // Close connection to X server
    //
    XCloseDisplay( xvars->xdisplay );
-   fprintf( stderr,  " i  Closed connection to the X server \n" );
+   fprintf( stderr, " [INFO]  Closed connection to the X server \n" );
    xvars->xdisplay = NULL;
 
    return 0;
@@ -292,7 +379,7 @@ int xwindow_close( struct my_xwin_vars *xvars )
 int react_to_key_press(int ikey, int ishift, int ictrl, int ialt ) {
    // return a termination flag if CTRL-Escape is pressed
    if( ikey == XK_Escape && ictrl > 0 ) {
-      fprintf( stderr, " i  The \"Escape\" key is pressed.\n" );
+      fprintf( stderr, " [INFO]  The \"Escape\" key is pressed.\n" );
       return -1;
    } else {
       return 0;
@@ -343,7 +430,7 @@ int xwindow_eventtrap( struct my_xwin_vars *xvars )
       switch(event.type) {
 
         case Expose:
-         fprintf( stderr, " i  Got \"Expose\" event.\n" );
+         fprintf( stderr, " [INFO]  Got \"Expose\" event.\n" );
 
          // This function can act on its own here...
          // ...and/or dispatch the event to user-assigned functions for handling
@@ -353,7 +440,7 @@ int xwindow_eventtrap( struct my_xwin_vars *xvars )
          break;
 
         case ConfigureNotify:
-         fprintf( stderr, " i  Got \"ConfigureNotify\" event.\n" );
+         fprintf( stderr, " [INFO]  Got \"ConfigureNotify\" event.\n" );
          // variables to track are:
          // event.xconfigure.width;
          // event.xconfigure.height;
@@ -365,7 +452,7 @@ int xwindow_eventtrap( struct my_xwin_vars *xvars )
          break;
 
         case MapNotify:
-         fprintf( stderr, " i  Got \"MapNotify\" event.\n" );
+         fprintf( stderr, " [INFO]  Got \"MapNotify\" event.\n" );
 
          // This function can act on its own here...
          // ...and/or dispatch the event to user-assigned functions for handling
@@ -375,7 +462,7 @@ int xwindow_eventtrap( struct my_xwin_vars *xvars )
          break;
 
         case KeyPress:
-         fprintf( stderr, " i  Got \"KeyPress\" event.\n" );
+         fprintf( stderr, " [INFO]  Got \"KeyPress\" event.\n" );
          ikey = XLookupKeysym(&event.xkey, 0);
 
          // This function can act on its own here...
@@ -383,46 +470,46 @@ int xwindow_eventtrap( struct my_xwin_vars *xvars )
 
          // first trap control / alt / shift
          if(ikey == XK_Shift_L) {
-            fprintf( stderr, " i  The \"SHIFT L\" key is pressed.\n" );
+            fprintf( stderr, " [INFO]  The \"SHIFT L\" key is pressed.\n" );
             ishift_key = 1;
          } else
          if(ikey == XK_Shift_R) {
-            fprintf( stderr, " i  The \"SHIFT R\" key is pressed.\n" );
+            fprintf( stderr, " [INFO]  The \"SHIFT R\" key is pressed.\n" );
             ishift_key = 2;
          } else
          if(ikey == XK_Control_L) {
-            fprintf( stderr, " i  The \"CTRL L\" key is pressed.\n" );
+            fprintf( stderr, " [INFO]  The \"CTRL L\" key is pressed.\n" );
             ictrl_key = 1;
          } else
          if(ikey == XK_Control_R) {
-            fprintf( stderr, " i  The \"CTRL R\" key is pressed.\n" );
+            fprintf( stderr, " [INFO]  The \"CTRL R\" key is pressed.\n" );
             ictrl_key = 2;
          } else
          if(ikey == XK_Alt_L) {
-            fprintf( stderr, " i  The \"ALT L\" key is pressed.\n" );
+            fprintf( stderr, " [INFO]  The \"ALT L\" key is pressed.\n" );
             ialt_key = 1;
          } else
          if(ikey == XK_Alt_R) {
-            fprintf( stderr, " i  The \"ALT R\" key is pressed.\n" );
+            fprintf( stderr, " [INFO]  The \"ALT R\" key is pressed.\n" );
             ialt_key = 2;
          }
 
 
          if(ikey == XK_Return) {
-            fprintf( stderr, " i  The \"ENTER\" key is pressed.\n" );
+            fprintf( stderr, " [INFO]  The \"ENTER\" key is pressed.\n" );
          } else
 
          if(ikey == XK_Up) {
-            fprintf( stderr, " i  The \"Up Arrow\" key is pressed.\n" );
+            fprintf( stderr, " [INFO]  The \"Up Arrow\" key is pressed.\n" );
          } else
          if(ikey == XK_Down) {
-            fprintf( stderr, " i  The \"Down Arrow\" key is pressed.\n" );
+            fprintf( stderr, " [INFO]  The \"Down Arrow\" key is pressed.\n" );
          } else
          if(ikey == XK_Left) {
-            fprintf( stderr, " i  The \"Left Arrow\" key is pressed.\n" );
+            fprintf( stderr, " [INFO]  The \"Left Arrow\" key is pressed.\n" );
          } else
          if(ikey == XK_Right) {
-            fprintf( stderr, " i  The \"Right Arrow\" key is pressed.\n" );
+            fprintf( stderr, " [INFO]  The \"Right Arrow\" key is pressed.\n" );
          } else {
             // this will trap all other keys
             iresult = react_to_key_press(ikey, ishift_key, ictrl_key, ialt_key);
@@ -440,21 +527,21 @@ int xwindow_eventtrap( struct my_xwin_vars *xvars )
          break;
 
         case KeyRelease:
-         fprintf( stderr, " i  Got \"KeyRelease\" event.\n" );
+         fprintf( stderr, " [INFO]  Got \"KeyRelease\" event.\n" );
          ikey = XLookupKeysym(&event.xkey, 0);
 
          // we only care about releases of helper keys (shift, alt, ctrl)
 
          if(ikey == XK_Shift_L || ikey == XK_Shift_R) {
-            fprintf( stderr, " i  The \"SHIFT\" key was released.\n" );
+            fprintf( stderr, " [INFO]  The \"SHIFT\" key was released.\n" );
             ishift_key = 0;
          } else
          if(ikey == XK_Control_L || ikey == XK_Control_R) {
-            fprintf( stderr, " i  The \"CTRL\" key was released.\n" );
+            fprintf( stderr, " [INFO]  The \"CTRL\" key was released.\n" );
             ictrl_key = 0;
          } else
          if(ikey == XK_Alt_L || ikey == XK_Alt_R) {
-            fprintf( stderr, " i  The \"ALT\" key was released.\n" );
+            fprintf( stderr, " [INFO]  The \"ALT\" key was released.\n" );
             ialt_key = 0;
          }
 
@@ -464,7 +551,7 @@ int xwindow_eventtrap( struct my_xwin_vars *xvars )
          break;
 
         case ButtonPress:
-         fprintf( stderr, " i  Got \"ButtonPress\" event.\n" );
+         fprintf( stderr, " [INFO]  Got \"ButtonPress\" event.\n" );
          if(event.xbutton.button == 1) { ileft_button = 1; }
          if(event.xbutton.button == 2) { imiddle_button = 1; }
          if(event.xbutton.button == 3) { iright_button = 1; }
@@ -475,7 +562,7 @@ int xwindow_eventtrap( struct my_xwin_vars *xvars )
          break;
 
         case ButtonRelease:
-         fprintf( stderr, " i  Got \"ButtonRelease\" event.\n" );
+         fprintf( stderr, " [INFO]  Got \"ButtonRelease\" event.\n" );
          if(event.xbutton.button == 1) { ileft_button = 0; }
          if(event.xbutton.button == 2) { imiddle_button = 0; }
          if(event.xbutton.button == 3) { iright_button = 0; }
@@ -486,7 +573,7 @@ int xwindow_eventtrap( struct my_xwin_vars *xvars )
          break;
 
         case MotionNotify:
-         fprintf( stderr, " i  Got \"MotionNotify\" event.\n" );
+         fprintf( stderr, " [INFO]  Got \"MotionNotify\" event.\n" );
 
          if(xvars->callback_MotionNotify != NULL) {
             xvars->callback_MotionNotify( xvars, &event );
@@ -494,7 +581,7 @@ int xwindow_eventtrap( struct my_xwin_vars *xvars )
          break;
 
         case EnterNotify:
-         fprintf( stderr, " i  Got \"EnterNotify\" event.\n" );
+         fprintf( stderr, " [INFO]  Got \"EnterNotify\" event.\n" );
 
          if(xvars->callback_EnterNotify != NULL) {
             xvars->callback_EnterNotify( xvars, &event );
@@ -502,7 +589,7 @@ int xwindow_eventtrap( struct my_xwin_vars *xvars )
          break;
 
         case FocusIn:
-         fprintf( stderr, " i  Got \"FocusIn\" event.\n" );
+         fprintf( stderr, " [INFO]  Got \"FocusIn\" event.\n" );
 
          if(xvars->callback_FocusIn != NULL) {
             xvars->callback_FocusIn( xvars, &event );
@@ -510,7 +597,7 @@ int xwindow_eventtrap( struct my_xwin_vars *xvars )
          break;
 
         case FocusOut:
-         fprintf( stderr, " i  Got \"FocusOut\" event.\n" );
+         fprintf( stderr, " [INFO]  Got \"FocusOut\" event.\n" );
 
          if(xvars->callback_FocusOut != NULL) {
             xvars->callback_FocusOut( xvars, &event );
@@ -565,7 +652,7 @@ int xwindow_setupDefaultFont( struct my_xwin_vars *xvars, char *font_name )
 
    fontInfo = XLoadQueryFont( xvars->xdisplay, font_name );
    if( fontInfo == NULL ) {
-      fprintf( stderr, " e  Could not find font! This is surprising.\n" );
+      fprintf( stderr, " [Error]  Could not find font! This is surprising.\n" );
       return 1;
    }
 
@@ -581,7 +668,7 @@ int xwindow_setupDefaultFont( struct my_xwin_vars *xvars, char *font_name )
    // generate the GL list-set for the particular number of lists
    xvars->font_base = glGenLists((GLsizei) (xvars->font_max_char + 1));
    if( xvars->font_base == 0 ) {
-      fprintf( stderr, " e  OpenGL could not make the font display list.\n" );
+      fprintf( stderr, " [Error]  Could not make default font display list.\n");
       XFreeFont( xvars->xdisplay, fontInfo );
       return 2;
    }
@@ -759,7 +846,7 @@ int xwindow_setupLinuxFont( struct my_xwin_vars *xvars )
    // generate the GL list-set for the particular number of lists
    xvars->font_base = glGenLists((GLsizei) (xvars->font_max_char + 1));
    if( xvars->font_base == 0 ) {
-      fprintf( stderr, " e  OpenGL could not make the font display list.\n" );
+      fprintf( stderr, " [Error]  Could not make custom font display list.\n" );
       return 2;
    }
 
