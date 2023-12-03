@@ -196,6 +196,8 @@ int user_focuschange( struct my_xwin_vars *xvars, XEvent *event )
 //
 int xwindow_user( struct my_xwin_vars *xvars )
 {
+   xvars->callback_FrameEntry = NULL;
+   xvars->callback_FrameExit = NULL;
    xvars->callback_Expose = NULL;
    xvars->callback_ConfigureNotify = NULL;
    xvars->callback_MapNotify = NULL;

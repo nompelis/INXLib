@@ -1,5 +1,5 @@
 /*****************************************************************************
- INXlib v0.5
+ INXlib v0.6
  A simple skeleton framework for building X11 windowed applications with XLib.
  It includes an OpenGL context for 3D graphics.
  Copyright 2016-2023 Ioannis Nompelis
@@ -266,9 +266,9 @@ int xwindow_setup( struct my_xwin_vars *xvars,
    //
 #ifdef _OLDSTYLE_
    if( irender == 1 ) {
-      xvars->glx_context = glXCreateContext( xvars->xdisplay, visinfo, NULL, True);
+      xvars->glxc = glXCreateContext( xvars->xdisplay, visinfo, NULL, True );
    } else {
-      xvars->glx_context = glXCreateContext( xvars->xdisplay, visinfo, NULL,False);
+      xvars->glxc = glXCreateContext( xvars->xdisplay, visinfo, NULL, False );
    }
 #else
    //
@@ -293,11 +293,11 @@ int xwindow_setup( struct my_xwin_vars *xvars,
       None
    };
 
-   xvars->glx_context = glXCreateContextAttribsARB( xvars->xdisplay,
-                                                    fbconfig[0], NULL, True,
-                                                    context_attribs );
+   xvars->glxc = glXCreateContextAttribsARB( xvars->xdisplay,
+                                             fbconfig[0], NULL, True,
+                                             context_attribs );
 #endif
-   if( xvars->glx_context == NULL ) {
+   if( xvars->glxc == NULL ) {
       fprintf( stderr, " [Error]  Could not create GLX context!\n" );
 #ifndef _OLDSTYLE_
       XFree( fbconfig );
@@ -310,10 +310,299 @@ int xwindow_setup( struct my_xwin_vars *xvars,
       return 6;
    }
 
+   // make sure the second GLX context is unuseable
+   xvars->glxc2 = NULL;
+
    //
    // make this the current OpenGL context (does not harm)
    //
-   glXMakeCurrent( xvars->xdisplay, xvars->xwindow, xvars->glx_context );
+   glXMakeCurrent( xvars->xdisplay, xvars->xwindow, xvars->glxc );
+
+   //
+   // Drop structures we no longer need
+   //
+#ifndef _OLDSTYLE_
+   XFree( fbconfig );
+#endif
+   XFree( visinfo );
+
+   //
+   // Set the internal variable for user-guided termination of the library
+   //
+   xvars->iterm_loop = 0;
+
+   return 0;
+}
+
+
+/**
+// @details
+//
+// Function to create and bring up an X window with two associated OpenGL
+// rendering contexts that share resources
+//
+// @author Ioannis Nompelis <nompelis@nobelware.com>
+*/
+int xwindow_setup_dualglx( struct my_xwin_vars *xvars,
+                           int width, int height, int xpos, int ypos,
+                           int iframe )
+{
+   int ierr;
+   XVisualInfo *visinfo;
+#ifndef _OLDSTYLE_
+   GLXFBConfig *fbconfig;
+#endif
+   XSetWindowAttributes win_attr;
+   unsigned long attr_mask;
+
+   // the following array will be used for initialization
+#ifdef _OLDSTYLE_
+   int glx_attr[] ={ GLX_RGBA,
+                     GLX_RED_SIZE, 8,       // number signifies bits
+                     GLX_GREEN_SIZE, 8,
+                     GLX_BLUE_SIZE, 8,
+                     GLX_ALPHA_SIZE, 8,
+                     GLX_DEPTH_SIZE, 24,
+                     GLX_STENCIL_SIZE, 8,
+                     GLX_DOUBLEBUFFER, True,
+                     None };   // this line terminates the list
+#else
+   int glx_attr[] ={
+                     GLX_X_RENDERABLE, True,
+                     GLX_DRAWABLE_TYPE,
+                     GLX_WINDOW_BIT,
+                     GLX_RENDER_TYPE,
+                     GLX_RGBA_BIT,
+                     GLX_X_VISUAL_TYPE,
+                     GLX_TRUE_COLOR,
+                     GLX_RED_SIZE, 8,
+                     GLX_GREEN_SIZE, 8,
+                     GLX_BLUE_SIZE, 8,
+                     GLX_ALPHA_SIZE, 8,
+                     GLX_DEPTH_SIZE, 24,
+                     GLX_STENCIL_SIZE, 8,
+                     GLX_DOUBLEBUFFER, True,
+                     // GLX_SAMPLE_BUFFERS  , 1,
+                     // GLX_SAMPLES         , 4,
+                     None };   // this line terminates the list
+#endif
+
+   //
+   // Initialize Xlib in multi-thread mode
+   // (This is absolutely needed if the user is to use this as intended.)
+   //
+   ierr = XInitThreads();
+   if( ierr == 0 ) {
+      fprintf( stderr, " [Error]  Could not start in multi-thread mode\n" );
+      return 1;
+   }
+
+   //
+   // make a connection to the X server
+   // (we use the user's default display from the environment variable)
+   //
+   xvars->xdisplay = XOpenDisplay( getenv("DISPLAY") );
+   if( xvars->xdisplay == NULL ) {
+      fprintf( stderr, " [Error]  Failed to open display.\n" );
+      return 2;
+   }
+
+   //
+   // echo the number of screens on this X display
+   //
+   fprintf( stderr, " [INFO]  The display has %d available screen(s)\n",
+            ScreenCount( xvars->xdisplay ) );
+
+   //
+   // get the default screen number (we will open our window in it) and get
+   // the root window
+   //
+   xvars->xscreen = DefaultScreen( xvars->xdisplay );
+   xvars->xroot   = RootWindow( xvars->xdisplay, xvars->xscreen );
+
+#ifndef _OLDSTYLE_
+   //
+   // retrieve a framebuffer configuration
+   //
+   int fbcount;
+   fbconfig = glXChooseFBConfig( xvars->xdisplay, xvars->xscreen, glx_attr,
+                                 &fbcount );
+   if( !fbconfig ) {
+      fprintf( stderr, " [Error]  Failed to retrieve a framebuffer config\n" );
+      XCloseDisplay( xvars->xdisplay );
+      xvars->xdisplay = NULL;
+      return 3;
+   } else {
+      fprintf( stderr, " [INFO]  Number of FB config: %d \n", fbcount );
+   }
+#endif
+
+   //
+   // allocate a structure to store the X display's visual info
+   // from the attributes we requested
+   //
+#ifdef _OLDSTYLE_
+   visinfo = glXChooseVisual( xvars->xdisplay, xvars->xscreen, glx_attr );
+#else
+   visinfo = glXGetVisualFromFBConfig( xvars->xdisplay, fbconfig[0] );
+#endif
+   if( !visinfo ) {
+      fprintf( stderr, " [Error]  Unable to find RGB, double-buffer visual\n" );
+      // close connection to the Xserver
+      XCloseDisplay( xvars->xdisplay );
+      xvars->xdisplay = NULL;
+      return 4;
+   }
+
+   //
+   // set position and size of the X window (use sizes from the screen as guide)
+   //
+   if( width == -1 ) {   // user has no preference
+      xvars->win_width  = WidthOfScreen(ScreenOfDisplay( xvars->xdisplay,
+                                                       xvars->xscreen )) * 3/4;
+      xvars->win_height = HeightOfScreen(ScreenOfDisplay( xvars->xdisplay,
+                                                       xvars->xscreen )) * 3/4;
+      xvars->win_xpos = xvars->win_width / 4;
+      xvars->win_ypos = xvars->win_height / 4;
+   } else {
+      xvars->win_width  = (unsigned int) width;
+      xvars->win_height = (unsigned int) height;
+      xvars->win_xpos = xpos;
+      xvars->win_ypos = ypos;
+   }
+
+   //
+   // Set attributes of window and the attribute mask
+   // Attributes include the choice of a movable window or frameless/static
+   // one, and X events to be trapped by the window (mouse clicks, motion,
+   // etc.) The attribute mask lets the API know of which of the attributes
+   // we provided.
+   //
+   win_attr.background_pixmap = None;
+   win_attr.background_pixel = 0;
+   win_attr.border_pixel = 2;
+   win_attr.colormap =
+            XCreateColormap( xvars->xdisplay, xvars->xroot, visinfo->visual,
+                             AllocNone );
+   win_attr.cursor = None;  // May point to an allocated special cursor
+   win_attr.override_redirect = False;
+   if( iframe == 1 )  {
+      win_attr.override_redirect = True;    // this makes the window solid!
+   }
+   win_attr.event_mask = StructureNotifyMask |
+                         ExposureMask |
+                         FocusChangeMask |
+                         PointerMotionMask |
+                         ButtonPressMask |
+                         ButtonReleaseMask |
+                         KeyPressMask |
+                         KeyReleaseMask;
+   attr_mask = CWBackPixel |
+               CWBorderPixel |
+               CWColormap |
+               CWEventMask |
+               CWOverrideRedirect;
+
+   //
+   // create the X window
+   //
+   xvars->xwindow = XCreateWindow( xvars->xdisplay, xvars->xroot,
+                        xvars->win_xpos,  xvars->win_ypos,
+                        xvars->win_width, xvars->win_height, 0,
+                        visinfo->depth, InputOutput,
+                        visinfo->visual, attr_mask, &win_attr );
+   if( xvars->xwindow <= 0 ) {
+      fprintf( stderr, " [Error]  Unable to create window \n" );
+#ifndef _OLDSTYLE_
+      // drop FB configuration object(s)
+      XFree( fbconfig );
+#endif
+      // drop visual info
+      XFree( visinfo );
+      // close connection to the Xserver
+      XCloseDisplay( xvars->xdisplay );
+      xvars->xdisplay = NULL;
+      return 5;
+   }
+
+   XStoreName( xvars->xdisplay, xvars->xwindow, xvars->window_name );
+
+   //
+   // Specify events to be sent to the program from the window
+   //
+   XSelectInput( xvars->xdisplay, xvars->xwindow,
+                 ExposureMask |
+                 StructureNotifyMask |
+                 FocusChangeMask |
+                 PointerMotionMask |
+                 ButtonPressMask |
+                 ButtonReleaseMask |
+                 KeyPressMask |
+                 KeyReleaseMask);
+
+   //
+   // Create the window and bring it up
+   // (An X window can be created and not be displayed until needed.)
+   //
+   XMapWindow( xvars->xdisplay, xvars->xwindow );
+   XMapRaised( xvars->xdisplay, xvars->xwindow );
+   XFlush( xvars->xdisplay );
+
+   //
+   // Associate this window with an OpenGL context (create the context)
+   // Here we make the selection of whether we want direct rendering (with
+   // hardware acceleration) or indirect rendering (with software).
+   //
+#ifdef _OLDSTYLE_
+   xvars->glxc = glXCreateContext( xvars->xdisplay, visinfo, NULL, True );
+#else
+   //
+   // Create a modern OpenGL context
+   //
+   typedef GLXContext (*my_func)( Display*, GLXFBConfig, GLXContext,
+                                  Bool, const int* );
+   my_func glXCreateContextAttribsARB = NULL;
+   glXCreateContextAttribsARB = (my_func)
+           glXGetProcAddressARB( (const GLubyte*)"glXCreateContextAttribsARB" );
+
+   // This library does _not_ use the latest versions of the "core" profile
+   // because it uses display lists. This compromise allows for the modern
+   // programmable pipeline to be used _and_ the fixed pipeline rendering!
+   int context_attribs[] = {
+   // GLX_CONTEXT_MAJOR_VERSION_ARB, 4,   // Core profile (DO NOT USE)
+   // GLX_CONTEXT_MINOR_VERSION_ARB, 5,
+   // GLX_CONTEXT_PROFILE_MASK_ARB, GLX_CONTEXT_CORE_PROFILE_BIT_ARB,
+      GLX_CONTEXT_MAJOR_VERSION_ARB, 3,   // Compatibility profile
+      GLX_CONTEXT_MINOR_VERSION_ARB, 0,
+      GLX_CONTEXT_PROFILE_MASK_ARB, GLX_CONTEXT_COMPATIBILITY_PROFILE_BIT_ARB,
+      None
+   };
+
+   xvars->glxc = glXCreateContextAttribsARB( xvars->xdisplay,
+                                             fbconfig[0], NULL, True,
+                                             context_attribs );
+#endif
+   if( xvars->glxc == NULL ) {
+      fprintf( stderr, " [Error]  Could not create GLX context!\n" );
+#ifndef _OLDSTYLE_
+      XFree( fbconfig );
+#endif
+      XFree( visinfo );
+      XDestroyWindow( xvars->xdisplay, xvars->xwindow );
+      xvars->xwindow = 0;
+      XCloseDisplay( xvars->xdisplay );
+      xvars->xdisplay = NULL;
+      return 6;
+   }
+
+
+
+
+
+   //
+   // make this the current OpenGL context (does not harm)
+   //
+   glXMakeCurrent( xvars->xdisplay, xvars->xwindow, xvars->glxc );
 
    //
    // Drop structures we no longer need
@@ -347,9 +636,9 @@ int xwindow_close( struct my_xwin_vars *xvars )
    // Destroy the OpenGL context
    //
    glXMakeCurrent( xvars->xdisplay, None, NULL );
-   glXDestroyContext( xvars->xdisplay, xvars->glx_context );
+   glXDestroyContext( xvars->xdisplay, xvars->glxc );
    fprintf( stderr, " [INFO]  Released GLX context \n" );
-   xvars->glx_context = NULL;
+   xvars->glxc = NULL;
 
    //
    // Destroy window
@@ -419,6 +708,11 @@ int xwindow_eventtrap( struct my_xwin_vars *xvars )
       // We need to start a timer here to use a time-interval to maintain a
       // constant framerate. (We do not do that at present.)
       // [start timer call goes here]
+
+      // perform pre-event, pre-drawing operations
+      if( xvars->callback_FrameEntry != NULL ) {
+         xvars->callback_FrameEntry( xvars );
+      }
 
    while(XPending(xdisplay) > 0) {
       XEvent event;
@@ -624,6 +918,11 @@ int xwindow_eventtrap( struct my_xwin_vars *xvars )
          xvars->callback_DrawScreen( xvars, NULL );
       }
 
+      // perform post-event, post-drawing operations
+      if( xvars->callback_FrameExit != NULL ) {
+          xvars->callback_FrameExit( xvars );
+      }
+
       // allow for a user termination condition to exit the loop
       if( xvars->iterm_loop != 0 ) iend = 1;
    }
@@ -648,7 +947,7 @@ int xwindow_setupDefaultFont( struct my_xwin_vars *xvars, char *font_name )
    Font fid;
 
    // first make the current GL context active so we can access it
-   glXMakeCurrent( xvars->xdisplay, xvars->xwindow, xvars->glx_context );
+   glXMakeCurrent( xvars->xdisplay, xvars->xwindow, xvars->glxc );
 
    fontInfo = XLoadQueryFont( xvars->xdisplay, font_name );
    if( fontInfo == NULL ) {
@@ -835,7 +1134,7 @@ GLubyte font_Cp850_8X8_8x8_flip[2048] = {
 int xwindow_setupLinuxFont( struct my_xwin_vars *xvars )
 {
    // first make the current GL context active so we can access it
-   glXMakeCurrent( xvars->xdisplay, xvars->xwindow, xvars->glx_context );
+   glXMakeCurrent( xvars->xdisplay, xvars->xwindow, xvars->glxc );
 
    // These are IN's guesses for chars and numbers for the console font
    xvars->font_min_char = 1;
