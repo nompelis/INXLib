@@ -6,7 +6,7 @@ CC = gcc
 COPTS = -g -Wall -fPIC -O0
 #-- the following needs to be defined at compile-time; too much to explain...
 COPTS += -D GL_GLEXT_PROTOTYPES
-XLIBS = -lGL -lGLU -lX11 -lstdc++ -ltiff -ljpeg
+XLIBS = -lGL -lGLU -lX11
 CXX = g++
 CXXOPTS = -g -Wall -fPIC -O0
 CXXOPTS += -D  _STRICT_CPP_
