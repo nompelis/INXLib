@@ -595,9 +595,27 @@ int xwindow_setup_dualglx( struct my_xwin_vars *xvars,
       return 6;
    }
 
-
-
-
+#ifdef _OLDSTYLE_
+   xvars->glxc2 = glXCreateContext( xvars->xdisplay, visinfo, xvars->glxc,
+                                                                        True );
+#else
+   xvars->glxc2 = glXCreateContextAttribsARB( xvars->xdisplay,
+                                              fbconfig[0], xvars->glxc, True,
+                                              context_attribs );
+#endif
+   if( xvars->glxc2 == NULL ) {
+      fprintf( stderr, " [Error]  Could not create 2nd GLX context!\n" );
+#ifndef _OLDSTYLE_
+      XFree( fbconfig );
+#endif
+      XFree( visinfo );
+      glXDestroyContext( xvars->xdisplay, xvars->glxc );
+      XDestroyWindow( xvars->xdisplay, xvars->xwindow );
+      xvars->xwindow = 0;
+      XCloseDisplay( xvars->xdisplay );
+      xvars->xdisplay = NULL;
+      return 7;
+   }
 
    //
    // make this the current OpenGL context (does not harm)
