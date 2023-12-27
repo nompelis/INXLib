@@ -639,6 +639,16 @@ int xwindow_setup_dualglx( struct my_xwin_vars *xvars,
 }
 
 
+void xwindow_query_glxversion( struct my_xwin_vars *xvars )
+{
+   int glxMajor, glxMinor;
+   if( glXQueryVersion( xvars->xdisplay, &glxMajor, &glxMinor) ) {
+      fprintf( stdout, " [INFO]  GLX Version: %d.%d\n", glxMajor, glxMinor );
+   } else {
+      fprintf( stdout, " [Error]  Failed to query GLX version\n" );
+   }
+}
+
 /**
 // @details
 //

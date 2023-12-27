@@ -104,6 +104,9 @@ int xwindow_setup_dualglx( struct my_xwin_vars *xvars,
                            int width, int height, int xpos, int ypos,
                            int iframe );
 
+void xwindow_query_glxversion( struct my_xwin_vars *xvars );
+
+
 /**
 // @brief
 // A function to close an X window and destroy the GLX OpenGL context
