@@ -664,6 +664,10 @@ int xwindow_close( struct my_xwin_vars *xvars )
    // Destroy the OpenGL context
    //
    glXMakeCurrent( xvars->xdisplay, None, NULL );
+   if( xvars->glxc2 != NULL ) {
+      glXDestroyContext( xvars->xdisplay, xvars->glxc2 );
+      fprintf( stderr, " [INFO]  Released 2nd GLX context \n" );
+   }
    glXDestroyContext( xvars->xdisplay, xvars->glxc );
    fprintf( stderr, " [INFO]  Released GLX context \n" );
    xvars->glxc = NULL;
