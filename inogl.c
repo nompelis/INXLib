@@ -392,7 +392,6 @@ if( type == GL_UNSIGNED_INT_ATOMIC_COUNTER ) s = "atomic_uint";
 
 void inoglCapabilities( struct inogl_s* p )
 {
-//---- setting up the OpenGL rendering "programmable pipeline"
    //GLenum glerr;
    p->oglRenderer = glGetString( GL_RENDERER );
    p->oglVersion = glGetString( GL_VERSION );

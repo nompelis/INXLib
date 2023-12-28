@@ -287,6 +287,6 @@ void dummy_draw( int iloc_, int jloc_,
    glDisable( GL_SCISSOR_TEST );
 #endif
 
-   printf(" INFO: %d %d %d %d \n", iloc_, jloc_, width_, height_ );//HACK
+// printf(" INFO: %d %d %d %d \n", iloc_, jloc_, width_, height_ );//HACK
 }
 
