@@ -1,16 +1,46 @@
+// This file contains all that is needed to render with the programmable
+// pipeline (this code is much more complicated). It contains two functions,
+// the "prog_init()" and the "program_display()", which abstract all the work
+// for initializing everything that is needed (the 1st) and rendering at each
+// frame the portion that is rendered with the programmable pipeline. The first
+// function spawns a producer thread for a dynamic scene, which is then used
+// by the consumer (main thread) doing the rendering. The second fucntion is
+// only dealing with "uniform variables" and the "VBO" & "VAO" handles. Once
+// the programmable pipeline has been initialized, the main thread goes in a
+// loop that executes a rendering function utilizing the fixed pipeline, and
+// inside that function the "program_display()" function is called. The GPU
+// codes ("programs') for rasterization and vertex processing are in this file,
+// and used by the "prog_init()" function. There is a struct ("payload") that
+// is created as a global variable to make a bunch of data accessible; this is
+// declared in this file. This file uses functions in the "inogl.c" file, which
+// is compiled and used as a library, with only its header included here.
+//
+//    app_render_prog.c    (this file)
+//    |
+//    |- axissphere.c      (independent code that creates data)
+//    |
+//    |- threads.c         (file that has all the threading functions, which
+//                          include generating data for dynamic rendering)
+//
+
 #include <stdio.h>
 #include <stdlib.h>
+#include <fcntl.h>
 #include <unistd.h>
+#include <signal.h>
 #include <string.h>
 #include <sys/types.h>
+#include <sys/select.h>
 #include <sys/stat.h>
-#include <fcntl.h>
 
 #include <GL/gl.h>
 #include <GL/glu.h>
 
+#include <pthread.h>
+#include <math.h>
+
 //
-// hard-including some functions to setup the programmable pipeline
+// structures and functions to setup the programmable pipeline
 //
 #include "inogl.h"
 
@@ -20,9 +50,25 @@
 #include "axissphere.c"
 
 //
-// a struct to allow us to access everything we need to draw
+// a struct to allow us to access everything we need to draw and threading
 //
+
 struct my_payload {
+   pthread_t tid;
+   pthread_attr_t tattr;
+// pthread_mutex_t mtx;
+   int pipefd[2];
+
+   Display *xdisplay;
+   Window xwindow;
+   GLXContext glxc;    // handle for the _rendering_ GL context; not the builder
+   int iuse, ichg;     // flow control of scene handle to use when rendering
+   GLuint *grid_VAO[2];   // the two VAO sets; alternating use in render/build
+   GLuint *grid_VBO[2];   // the two VBO sets; alternating use in render/build
+   unsigned char *bstat[2];  // status of the sets
+   GLfloat *grid_vdata;   // single array of a tile's grid data; temp storage
+   int im, jm, grid_vertex_count;   // tile sizing
+
    struct inogl_s ogl;
    struct inogl_grp_s *groups;
    struct inogl_shader_s prg;
@@ -30,12 +76,23 @@ struct my_payload {
    void* obj;
    int num_groups;
 
-   // for a special object
    GLuint VAO, VBO;
    GLfloat* vdata;
    int vertex_count;
+#define _DEMOING_A_TILE_
+#ifdef _DEMOING_A_TILE_
+   // for a special fixed object to make sure we know what a tile looks like
+   GLuint VAO2, VBO2;
+   GLfloat* vdata2;
+#endif
 };
+
 struct my_payload payload;   // global in scope
+
+//
+// hard-including the functions used in (POSIX) threading
+//
+#include "threads.c"
 
 //
 // a function to create a "VAO" of some triangles
@@ -57,7 +114,7 @@ void createTriangleVAO( GLuint *vao, GLuint *vbo, int* vertex_count )
    };
    *vertex_count = 3*3;
    printf("SIZEOF(VERTICES) in bytes: %ld \n",sizeof(vertices));//HACK
-    
+
    glGenVertexArrays(1, vao);   // later delete with glDelete...()
    glBindVertexArray(*vao);
     
@@ -186,14 +243,17 @@ void main() {
 // an initialization function that establishes all that is needed for the
 // programmable pipeline (including creating some object to render)
 //
-void init()
+
+void prog_init( void* arg )
 {
    printf("================== INITIALIZING ======================= \n");
+   // items related to threading
+   init_threads( arg );
 
    // some structures to create a vertex data array
-   int im=40,jm=20;
+   int imm=40,jmm=20;
    float* tmp;
-   int ierr=inMakeAxisSphereshell3( im, jm, &tmp );
+   int ierr=inMakeAxisSphereshell3( imm, jmm, &tmp );
    payload.num_groups = 6;  // increase this to repeat the object in the scene
    payload.groups = (struct inogl_grp_s*)
                malloc( ((size_t) payload.num_groups) *
@@ -202,8 +262,9 @@ void init()
       payload.groups[n].VAO = 0; // NO NEED
       payload.groups[n].VBO = 0; // NO NEED
       // to understand the following, you need to look into the code...
-      int tri_count = 2*(im-1)*(jm-3) + (im-1) + (im-1);
+      int tri_count = 2*(imm-1)*(jmm-3) + (imm-1) + (imm-1);
           tri_count -= 0;  // use this to subtract triangles from the sphere
+                           // to see their rendering order...
       payload.groups[n].vertex_count = 3 * tri_count;
       payload.groups[n].vdata = (GLfloat*) tmp;
    }
@@ -215,7 +276,7 @@ void init()
                       vertexShaderSource130, fragmentShaderSource130 );
 
 
-   // construction of objects to draw with the programmable pipeline
+   // construction of some fixed objects to draw with the programmable pipeline
    for(short n=0;n<payload.num_groups;++n) {
       struct inogl_grp_s* gp = &( payload.groups[n] );
 
@@ -259,8 +320,20 @@ void init()
    }
 
    // make an intuitive object (3 triangles)
-   createTriangleVAO( &( payload.VAO ), &(payload.VBO),
+   createTriangleVAO( &( payload.VAO ), &( payload.VBO ),
                       &( payload.vertex_count ) );
+   payload.vdata = NULL;  // not going to reference any data for this object
+
+#ifdef _DEMOING_A_TILE_
+// THE SPECIAL OBJECT OF DEMOING A TILE; make sure everything is working
+// the VAO is made here and is held permanently for this (extra) tile
+  payload.vdata2 = (GLfloat*) malloc( sizeof(float) *
+                           ((size_t) (12 * 2*3 * payload.im * payload.jm)) );
+  makeTileData( payload.vdata2, payload.im, payload.jm, 4 );
+  makeVBO( &(payload.VBO2 ), payload.grid_vertex_count, payload.vdata2 );
+  makeVAO( &(payload.VAO2), payload.VBO2 );
+#endif
+
 
    // trap left-over issues with the GL context
 {char ic=0; GLenum glerr;
@@ -273,61 +346,14 @@ if(ic)exit(1);}
    printf("================== INIT ENDED ========================= \n");
 }
 
-//
-// ----- a function to prepare the fixed rasterization pipeline
-//
-void prepare(void)
-{
-   glLightModeli( GL_LIGHT_MODEL_TWO_SIDE, GL_FALSE );
-   // controls specular reflections
-   glLightModeli( GL_LIGHT_MODEL_LOCAL_VIEWER, GL_TRUE );
-   // order of specular light processing
-   glLightModeli( GL_LIGHT_MODEL_COLOR_CONTROL, GL_SEPARATE_SPECULAR_COLOR );
-// glLightModeli( GL_LIGHT_MODEL_COLOR_CONTROL, GL_SINGLE_COLOR );
-   // ambient light regardless of lights present
-   GLfloat ambient_light[] = { 0.1, 0.1, 0.1, 1.0 };
-   glLightModelfv( GL_LIGHT_MODEL_AMBIENT, ambient_light );
-
-   GLfloat position[] = { -12.1, 19.1, 19.1, 1.0 };
-//static float r1 = 0.0;
-//r1 += 0.05*acos(-1.0);
-//position[0] += 2.0*cos((double) r1);
-//position[1] += 2.0*sin((double) r1);
-   glLightfv( GL_LIGHT0, GL_POSITION, position );
-   GLfloat ambient[] = { 0.02, 0.02, 0.02, 1.0 };
-   GLfloat diffuse[] = { 1.0, 1.0, 1.0, 1.0 };
-   GLfloat specular[] = { 0.0, 0.0, 0.0, 1.0 };   // For now...
-   glLightfv( GL_LIGHT0, GL_AMBIENT, ambient );
-   glLightfv( GL_LIGHT0, GL_DIFFUSE, diffuse );
-   glLightfv( GL_LIGHT0, GL_SPECULAR, specular );
-   glLightf( GL_LIGHT0, GL_CONSTANT_ATTENUATION, 0.0 );
-   glLightf( GL_LIGHT0, GL_LINEAR_ATTENUATION, 0.05 );
-   glEnable( GL_LIGHT0 );
-
-
-   GLfloat col[] = { 1.0, 0.2, 0.2 };
-   glMaterialfv( GL_FRONT, GL_AMBIENT, col );
-// glMaterialfv( GL_BACK,  GL_AMBIENT, col );
-   glMaterialfv( GL_FRONT, GL_DIFFUSE, col );
-// glMaterialfv( GL_BACK,  GL_DIFFUSE, col );
-   col[1] = 1.0; col[2] = 1.0;
-   glMaterialfv( GL_FRONT, GL_SPECULAR, col );
-// glMaterialfv( GL_BACK,  GL_SPECULAR, col );
-}
 
 //
-// ----- a function to "undo stuff" from the fixed rasterization pipeline
-//
-void unprepare(void)
-{
-
-}
-
-
 // ----- the programmable pipeline rasterization function -----
+//
+
 void program_display()
 {
-   printf("====== DISPLAY =====\n");
+// printf("====== DISPLAY =====\n");
    GLfloat matrix[16] = { 1.0, 0.0, 0.0, 0.0,
                           0.0, 1.0, 0.0, 0.0,
                           0.0, 0.0, 1.0, 0.0,
@@ -344,7 +370,7 @@ void program_display()
    struct inogl_shader_s* prg = &( payload.prg );
 
    GLenum glerr;
-   printf("Using program: %d \n", prg->shaderProgram );
+// printf("Using program: %d \n", prg->shaderProgram );
    glUseProgram( prg->shaderProgram );
    while(( glerr = glGetError() ) != GL_NO_ERROR ) {
       const char* errorString = inGetGLErrorString(glerr);
@@ -357,7 +383,7 @@ void program_display()
    if( modelLoc == -1 ) {
       printf("FAILED to get modelview matrix location!\n");
    } //else printf("SUCCESS! modelview matrix location: %d \n", modelLoc );
-   printf("Get Uniform (modelLoc): %d \n", modelLoc );
+// printf("Get Uniform (modelLoc): %d \n", modelLoc );
    // Set the value of the 'model' uniform variable
    glUniformMatrix4fv( modelLoc, 1, GL_FALSE, Mmatrix );
    while(( glerr = glGetError() ) != GL_NO_ERROR ) {
@@ -369,7 +395,7 @@ void program_display()
    if( viewLoc == -1 ) {
       printf("FAILED to get view matrix location!\n");
    } //else printf("SUCCESS! view matrix location: %d \n", viewLoc );
-   printf("Get Uniform (viewLoc): %d \n", viewLoc );
+// printf("Get Uniform (viewLoc): %d \n", viewLoc );
    glUniformMatrix4fv( viewLoc, 1, GL_FALSE, Vmatrix );
    while(( glerr = glGetError() ) != GL_NO_ERROR ) {
       const char* errorString = inGetGLErrorString(glerr);
@@ -380,7 +406,7 @@ void program_display()
    if( projLoc == -1 ) {
       printf("FAILED to get projection matrix location!\n");
    } //else printf("SUCCESS! proj matrix location: %d \n", projLoc );
-   printf("Get Uniform (projLoc): %d \n", projLoc );
+// printf("Get Uniform (projLoc): %d \n", projLoc );
    glUniformMatrix4fv( projLoc, 1, GL_FALSE, Pmatrix );
    while(( glerr = glGetError() ) != GL_NO_ERROR ) {
       const char* errorString = inGetGLErrorString(glerr);
@@ -392,7 +418,7 @@ void program_display()
    GLint colorLoc = glGetUniformLocation( prg->shaderProgram, "uniColor" );
    if( colorLoc == -1 ) {
       printf("FAILED to get uniColor location!\n");
-   } else printf("SUCCESS! uniColor location: %d \n", colorLoc );
+   }// else printf("SUCCESS! uniColor location: %d \n", colorLoc );
    glUniform4f( colorLoc, vals[0], vals[1], vals[2], vals[3] );
    while(( glerr = glGetError() ) != GL_NO_ERROR ) {
       const char* errorString = inGetGLErrorString(glerr);
@@ -403,12 +429,12 @@ void program_display()
       const char* errorString = inGetGLErrorString(glerr);
       printf("Get Uniform (colorloc) error: %d \"%s\"\n", glerr, errorString );
    }
-   printf("Queried uniColor: %f %f %f %f \n",vals[0],vals[1],vals[2],vals[3] );
+// printf("Queried uniColor: %f %f %f %f \n",vals[0],vals[1],vals[2],vals[3] );
 
    GLint ambLoc = glGetUniformLocation( prg->shaderProgram, "ambColor" );
    if( ambLoc == -1 ) {
       printf("FAILED to get ambColor location!\n");
-   } else printf("SUCCESS! ambColor location: %d \n", ambLoc );
+   }// else printf("SUCCESS! ambColor location: %d \n", ambLoc );
    glUniform4f( ambLoc, 0.91f, 0.91f, 0.91f, 1.0f );
    while(( glerr = glGetError() ) != GL_NO_ERROR ) {
       const char* errorString = inGetGLErrorString(glerr);
@@ -420,12 +446,12 @@ void program_display()
       const char* errorString = inGetGLErrorString(glerr);
       printf("Get Uniform (colorloc2) error: %d \"%s\"\n", glerr, errorString );
    }
-   printf("Queried ambColor: %f %f %f %f \n",vals[0],vals[1],vals[2],vals[3] );
+// printf("Queried ambColor: %f %f %f %f \n",vals[0],vals[1],vals[2],vals[3] );
 
    GLint lposLoc = glGetUniformLocation( prg->shaderProgram, "lightPos" );
    if( lposLoc == -1 ) {
       printf("FAILED to get lightPos location!\n");
-   } else printf("SUCCESS! lightPos location: %d \n", lposLoc );
+   }// else printf("SUCCESS! lightPos location: %d \n", lposLoc );
 static GLfloat t = 0.0; t += 0.05*0.0;  // can move the light around
    GLfloat move[3] = { 0.0, 4.0, 4.0 };
    move[1] += 0.4*cos(t);
@@ -439,7 +465,7 @@ static GLfloat t = 0.0; t += 0.05*0.0;  // can move the light around
       const char* errorString = inGetGLErrorString(glerr);
       printf("Get Uniform (lposLoc) error: %d \"%s\"\n", glerr, errorString );
    }
-   printf("Queried lightPos: %f %f %f \n",vals[0],vals[1],vals[2] );
+// printf("Queried lightPos: %f %f %f \n",vals[0],vals[1],vals[2] );
 
 // UNIFORMS (for object drawing)
    GLint transLoc = glGetUniformLocation( prg->shaderProgram, "vtxTrans" );
@@ -448,8 +474,9 @@ static GLfloat t = 0.0; t += 0.05*0.0;  // can move the light around
    GLfloat Rmatrix[9] = { 1.0, 0.0, 0.0,  0.0, 1.0, 0.0, -0.0, 0.0, 1.0 };
    glUniformMatrix3fv( rotLoc, 1, GL_FALSE, Rmatrix );
 
-   inoglDisplayUniforms( prg->shaderProgram );
+// inoglDisplayUniforms( prg->shaderProgram );
 
+   //----- drawing -----
    vals[0] = 0.0f; vals[1] = 0.0f; vals[2] = 0.0f;
    for(int n=0;n<payload.num_groups;++n) {
       struct inogl_grp_s* gp = &( payload.groups[n] );
@@ -467,6 +494,50 @@ static GLfloat t = 0.0; t += 0.05*0.0;  // can move the light around
    glDrawArrays( GL_TRIANGLES, 0, payload.vertex_count );
    glBindVertexArray(0);
 
+   // DEMOING A TILE
+   glUniform3f( transLoc,-0.5f,-0.5f,-2.0f );   // move far away
+   glBindVertexArray( payload.VAO2 );
+   glDrawArrays( GL_TRIANGLES, 0, payload.grid_vertex_count );
+   glBindVertexArray(0);
+
+   glUniform3f( transLoc,-0.5f,-0.5f,-1.2f );   // move away
+
+   // ----- deal with threading 1 -----
+   int iuse = payload.iuse, iswap=0;
+   if( iuse != payload.ichg ) {
+      payload.iuse = payload.ichg;
+      iuse = payload.iuse;
+      iswap=1;
+   }
+
+   unsigned char* bstat = payload.bstat[ iuse ];
+   GLuint* grid_VAO = payload.grid_VAO[ iuse ];
+   GLuint* grid_VBO = payload.grid_VBO[ iuse ];
+   for(int n=0;n<9;++n) {                       // sweep over tile slots
+      if( bstat[n] == 1 ) {                     // flagged for creating new VAO
+  printf(" ==<<<<<=== BUILDING Vertex Attrib Obj %d -> %d ======== \n",n,grid_VBO[n]);//HACK
+         makeVAO( &(grid_VAO[n]), grid_VBO[n] );
+//printf("Array: %d   Buffer: %d \n", grid_VAO[n], grid_VBO[n] );//HACK
+         bstat[n] = 2;                          // flag as "render this"
+      } else if( bstat[n] == 4 ) {              // flagged for deleting
+  printf(" ==<<<<<=== DELETING Vertex Attrib Obj %d ======== \n",n);//HACK
+         glDeleteVertexArrays( 1, &(grid_VAO[n]) );
+         bstat[n] = 8;                          // flag that needs VBO deletion
+      }
+
+      if( bstat[n] == 2 ) {                     // flagged as "render this"
+         glBindVertexArray( grid_VAO[n] );
+         glDrawArrays( GL_TRIANGLES, 0, payload.grid_vertex_count );
+         glBindVertexArray(0);
+      }
+   }
+
    glUseProgram(0);  // unbind shader program
+
+   // ----- deal with threading 1 -----
+   if( iswap ) {
+      fprintf( stdout, " [INFO]  Rendering thread swapping scene \n" );
+      write( payload.pipefd[1], "X", 1 );
+   }
 }
 

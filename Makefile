@@ -12,12 +12,12 @@ CXXOPTS = -g -Wall -fPIC -O0
 CXXOPTS += -D  _STRICT_CPP_
 
 ###### libraries ######
-LIBS = $(XLIBS) -lm 
+LIBS = $(XLIBS) -lm -lpthread
 
 
 all:
 	$(CC) -c $(DEBUG) $(COPTS) -Dno_OLDSTYLE_ inxlib.c
-	$(CC) -c $(DEBUG) $(COPTS) -D_CASE1_ inxlib_user.c
+	$(CC) -c $(DEBUG) $(COPTS) -D_CASE3_ inxlib_user.c
 	$(CC) -c $(DEBUG) $(COPTS) inogl.c
 	$(CC)    $(DEBUG) $(COPTS) test.c inxlib.o inxlib_user.o inogl.o $(LIBS)
 

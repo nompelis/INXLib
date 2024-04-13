@@ -26,7 +26,7 @@
 // example. This makes the function-pointer assignment really simple, because
 // it can otherwise be a real burden for the user to achieve.
 //
-#include "dummy_draw.c"   // HACK TO TEST
+#include "app.c"   // injects a whole lot of code here...
 
 #ifdef _DEBUG_FONT_
 static int global_cursor_x=0, global_cursor_y=0, do_draw_cursor=0;
@@ -38,6 +38,7 @@ static int global_cursor_x=0, global_cursor_y=0, do_draw_cursor=0;
 // arguments are passed to the actual drawing function when it is invoked from
 // the function pointer in the main loop.)
 //
+
 int user_draw( struct my_xwin_vars *xvars, void *data )
 {
 #ifdef _CASE1_
@@ -46,9 +47,9 @@ int user_draw( struct my_xwin_vars *xvars, void *data )
 
    // we call a function of our choosing, and in this case we have compiled the
    // function in this file (with all its dependencies above...)
-   dummy_draw( 0, 0,
-               xvars->win_width, xvars->win_height,
-               xvars->font_base, xvars->xdisplay, xvars->xwindow );
+   app_draw( 0, 0,
+             xvars->win_width, xvars->win_height,
+             xvars->font_base, xvars->xdisplay, xvars->xwindow );
 #endif
 
 #ifdef _CASE2_
@@ -56,11 +57,19 @@ int user_draw( struct my_xwin_vars *xvars, void *data )
    // We use a C++ framework to do all of our drawing
 
    // we call the drawing frunction from the first case  to draw a background
-   dummy_draw( 0, 0,
-               xvars->win_width, xvars->win_height,
-               xvars->font_base, xvars->xdisplay, xvars->xwindow );
+   app_draw( 0, 0,
+             xvars->win_width, xvars->win_height,
+             xvars->font_base, xvars->xdisplay, xvars->xwindow );
    // we pass the pointers given to us and sit back and wait...
    (void) ingl_widgets_draw( xvars, data );
+#endif
+
+#ifdef _CASE3_
+   // DEMO 3
+   // this is like "case 1" but with two threads interacting
+   app_draw( 0, 0,
+             xvars->win_width, xvars->win_height,
+             xvars->font_base, xvars->xdisplay, xvars->xwindow );
 #endif
 
 #ifdef _DEBUG_FONT_
@@ -74,7 +83,6 @@ int user_draw( struct my_xwin_vars *xvars, void *data )
 
    // swap the buffers to the frame we just rendered
    glXSwapBuffers( xvars->xdisplay, xvars->xwindow );
-// printf("THIS SHOULD HAVE PLOTTED SOMETHING \n");
 
    return 0;
 }
@@ -83,9 +91,10 @@ int user_draw( struct my_xwin_vars *xvars, void *data )
 //
 // Generic function to be called when the window is "configured"
 // (The only reason this function is introduced is so that the appropriate
-// arguments are passed to the actual configure function when it is invoked from
-// the function pointer in the main loop.)
+// arguments are passed to the actual configure function when it is invoked
+// from the function pointer in the main loop.)
 //
+
 int user_configure( struct my_xwin_vars *xvars, XEvent *event )
 {
 #ifdef _CASE2_
@@ -96,12 +105,14 @@ int user_configure( struct my_xwin_vars *xvars, XEvent *event )
    return 0;
 }
 
+
 //
 // Generic function to be called when we trap and handle a KeyPress event
 // (The only reason this function is introduced is so that the appropriate
 // arguments are passed to the actual C++ function when it is invoked from
 // the function pointer in the main loop.)
 //
+
 int user_keypress( struct my_xwin_vars *xvars, XEvent *event )
 {
 #ifdef _CASE2_
@@ -112,10 +123,12 @@ int user_keypress( struct my_xwin_vars *xvars, XEvent *event )
    return 0;
 }
 
+
 //
 // Generic function to be called when we trap and handle a KeyRelease event
 // (Works similarly to the keypress function.)
 //
+
 int user_keyrelease( struct my_xwin_vars *xvars, XEvent *event )
 {
 #ifdef _CASE2_
@@ -130,6 +143,7 @@ int user_keyrelease( struct my_xwin_vars *xvars, XEvent *event )
 //
 // Generic function to be called when we trap and handle a ButtonPress event
 //
+
 int user_buttonpress( struct my_xwin_vars *xvars, XEvent *event )
 {
 #ifdef _CASE2_
@@ -144,6 +158,7 @@ int user_buttonpress( struct my_xwin_vars *xvars, XEvent *event )
 //
 // Generic function to be called when we trap and handle a ButtonRelease event
 //
+
 int user_buttonrelease( struct my_xwin_vars *xvars, XEvent *event )
 {
 #ifdef _CASE2_
@@ -158,6 +173,7 @@ int user_buttonrelease( struct my_xwin_vars *xvars, XEvent *event )
 //
 // Generic function to be called when we trap and handle a MotionNotify event
 //
+
 int user_motionnotify( struct my_xwin_vars *xvars, XEvent *event )
 {
 #ifdef _CASE2_
@@ -180,6 +196,7 @@ int user_motionnotify( struct my_xwin_vars *xvars, XEvent *event )
 //
 // Generic function to be called when we trap and handle a FocusChange event
 //
+
 int user_focuschange( struct my_xwin_vars *xvars, XEvent *event )
 {
 #ifdef _CASE2_
@@ -193,7 +210,10 @@ int user_focuschange( struct my_xwin_vars *xvars, XEvent *event )
 
 //
 // Function to specify callbacks (user must build this function)
+// NOTE: No OpenGL related setup should be done here, as this function is
+// called _before_ the OpenGL rendering context is created!
 //
+
 int xwindow_user( struct my_xwin_vars *xvars )
 {
    xvars->callback_FrameEntry = NULL;
@@ -244,7 +264,7 @@ int xwindow_user( struct my_xwin_vars *xvars )
    //
    xvars->callback_ButtonRelease = user_buttonrelease;
 
-// prepare the drawing (but no GL related things!)
+// prepare any drawing (but no GL related things!)
 
    return 0;
 }

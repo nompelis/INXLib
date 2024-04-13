@@ -428,8 +428,6 @@ int inDumpTecplotShell3( char *fname, int ne, const float *x )
 }
 
 
-
-
 // Compile this file with "-DMAIN" to run it standalone
 #ifdef _DRIVER_
 int main() {
