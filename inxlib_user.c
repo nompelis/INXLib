@@ -74,8 +74,10 @@ int user_draw( struct my_xwin_vars *xvars, void *data )
 
 #ifdef _DEBUG_FONT_
    if( do_draw_cursor ) {
+      glXMakeCurrent( xvars->xdisplay, xvars->xwindow, xvars->glxc );
       glColor3f( 0.2, 1.0, 0.2 );
       glWindowPos2i( global_cursor_x, xvars->win_height - global_cursor_y );
+      glListBase( xvars->font_base );
       glCallLists( (GLsizei) strlen( "CURSOR" ), GL_UNSIGNED_BYTE, "CURSOR" );
       do_draw_cursor=0;
    }
