@@ -99,6 +99,10 @@ int user_draw( struct my_xwin_vars *xvars, void *data )
 
 int user_configure( struct my_xwin_vars *xvars, XEvent *event )
 {
+   XConfigureEvent xce = event->xconfigure;
+   xvars->win_width = xce.width;
+   xvars->win_height = xce.height;
+
 #ifdef _CASE2_
    // we pass the pointers given to us and sit back and wait...
    (void) ingl_widgets_root_configure( xvars, (void *) event );
