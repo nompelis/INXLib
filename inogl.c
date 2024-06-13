@@ -3,6 +3,7 @@
 #include <unistd.h>
 #include <string.h>
 
+
 //
 // Absolutely set this when compiling!
 //
@@ -443,9 +444,9 @@ void inoglDisplayUniforms( GLuint shaderProgram )
       GLenum type;
       glGetActiveUniform( shaderProgram, i, 
                           bufSize, &length, &size, &type, name );
-       GLint loc = glGetUniformLocation(shaderProgram, name); 
-       printf(" - Uniform %d, name: \"%s\" location: %d, type %d (\"%s\"), size: %d \n",
-              i ,name ,loc, type, inGetStringOfUniformType( type ), size );
+      GLint loc = glGetUniformLocation( shaderProgram, name ); 
+      fprintf( stdout, " - Uniform %d, name: \"%s\" location: %d, type %d (\"%s\"), size: %d \n",
+               i ,name ,loc, type, inGetStringOfUniformType( type ), size );
    }
 }
 
