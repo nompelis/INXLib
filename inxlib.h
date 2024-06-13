@@ -2,7 +2,7 @@
  INXlib v0.6
  A simple skeleton framework for building X11 windowed applications with XLib.
  It includes an OpenGL context for 3D graphics.
- Copyright 2016-2023 Ioannis Nompelis
+ Copyright 2016-2024 Ioannis Nompelis
  *****************************************************************************/
 
 #ifndef _INXLIB_H_
@@ -36,6 +36,7 @@ struct my_xwin_vars {
    Display *xdisplay;
    int xscreen;
    Window xroot, xwindow;
+   GLXWindow glxwin;
    GLXContext glxc;
    GLXContext glxc2;
 

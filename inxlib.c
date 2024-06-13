@@ -2,7 +2,7 @@
  INXlib v0.6
  A simple skeleton framework for building X11 windowed applications with XLib.
  It includes an OpenGL context for 3D graphics.
- Copyright 2016-2023 Ioannis Nompelis
+ Copyright 2016-2024 Ioannis Nompelis
  *****************************************************************************/
 
 #include <stdio.h>
@@ -314,9 +314,34 @@ int xwindow_setup( struct my_xwin_vars *xvars,
    xvars->glxc2 = NULL;
 
    //
+   // make a GLX window (this is for high-performance applications)
+   //
+   xvars->glxwin = glXCreateWindow( xvars->xdisplay, fbconfig[0],
+                                    xvars->xwindow, NULL );
+   if( !(xvars->glxwin) ) {
+      fprintf( stderr, " [Error]  Could not create a GLX area! \n" );
+#ifndef _OLDSTYLE_
+      XFree( fbconfig );
+#endif
+      XFree( visinfo );
+      glXDestroyContext( xvars->xdisplay, xvars->glxc );
+      glXDestroyContext( xvars->xdisplay, xvars->glxc2 );
+      XDestroyWindow( xvars->xdisplay, xvars->xwindow );
+      xvars->xwindow = 0;
+      XCloseDisplay( xvars->xdisplay );
+      xvars->xdisplay = NULL;
+      return 8;
+   }
+
+   //
    // make this the current OpenGL context (does not harm)
    //
+#ifndef _OLDSTYLE_
+   glXMakeContextCurrent( xvars->xdisplay, xvars->glxwin, xvars->glxwin,
+                          xvars->glxc );
+#else
    glXMakeCurrent( xvars->xdisplay, xvars->xwindow, xvars->glxc );
+#endif
 
    //
    // Drop structures we no longer need
@@ -618,9 +643,34 @@ int xwindow_setup_dualglx( struct my_xwin_vars *xvars,
    }
 
    //
+   // make a GLX window (this is for high-performance applications)
+   //
+   xvars->glxwin = glXCreateWindow( xvars->xdisplay, fbconfig[0],
+                                    xvars->xwindow, NULL );
+   if( !(xvars->glxwin) ) {
+      fprintf( stderr, " [Error]  Could not create a GLX area! \n" );
+#ifndef _OLDSTYLE_
+      XFree( fbconfig );
+#endif
+      XFree( visinfo );
+      glXDestroyContext( xvars->xdisplay, xvars->glxc );
+      glXDestroyContext( xvars->xdisplay, xvars->glxc2 );
+      XDestroyWindow( xvars->xdisplay, xvars->xwindow );
+      xvars->xwindow = 0;
+      XCloseDisplay( xvars->xdisplay );
+      xvars->xdisplay = NULL;
+      return 8;
+   }
+
+   //
    // make this the current OpenGL context (does not harm)
    //
+#ifndef _OLDSTYLE_
+   glXMakeContextCurrent( xvars->xdisplay, xvars->glxwin, xvars->glxwin,
+                          xvars->glxc );
+#else
    glXMakeCurrent( xvars->xdisplay, xvars->xwindow, xvars->glxc );
+#endif
 
    //
    // Drop structures we no longer need
@@ -671,6 +721,13 @@ int xwindow_close( struct my_xwin_vars *xvars )
    glXDestroyContext( xvars->xdisplay, xvars->glxc );
    fprintf( stderr, " [INFO]  Released GLX context \n" );
    xvars->glxc = NULL;
+
+   //
+   // Destroy GLX area
+   //
+   glXDestroyWindow( xvars->xdisplay, xvars->glxwin );
+   fprintf( stderr, " [INFO]  Destroyed GLX area \n" );
+   xvars->glxwin = 0;
 
    //
    // Destroy window
@@ -943,7 +1000,7 @@ int xwindow_eventtrap( struct my_xwin_vars *xvars )
       // [stop timer call goes here]
 
       // we impose an appropriate delay to maintain constant frame-rate
-      usleep(isleep);
+      usleep( isleep );
 
       // call the function to draw the screen
       if( xvars->callback_DrawScreen != NULL ) {
