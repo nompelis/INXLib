@@ -61,6 +61,7 @@ struct my_payload {
 
    Display *xdisplay;
    Window xwindow;
+   GLXWindow glxwin;
    GLXContext glxc;    // handle for the _rendering_ GL context; not the builder
    int iuse, ichg;     // flow control of scene handle to use when rendering
    GLuint *grid_VAO[2];   // the two VAO sets; alternating use in render/build
