@@ -288,7 +288,8 @@ void* sceneMakerThread( void* arg )
    sleep(1);
 
    // make the scene creation OpenGL context current for this thread
-   glXMakeCurrent( p->xdisplay, p->xwindow, p->glxc );
+// glXMakeCurrent( p->xdisplay, p->xwindow, p->glxc );
+   glXMakeContextCurrent( p->xdisplay, p->glxwin, p->glxwin, p->glxc );
 
    // perpetual loop that is the thread's heartbeat
    while( istate ) {   // allow for exit from loop
@@ -390,6 +391,7 @@ void init_threads( void* arg )
    struct my_xwin_vars* xvars = (struct my_xwin_vars*) arg;
    payload.xdisplay = xvars->xdisplay;
    payload.xwindow = xvars->xwindow;
+   payload.glxwin = xvars->glxwin;
    payload.glxc = xvars->glxc2;
 
 /********** build all VBOs on the rendering thread and keep them *******
