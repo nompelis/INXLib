@@ -84,7 +84,7 @@ int user_draw( struct my_xwin_vars *xvars, void *data )
 #endif
 
    // swap the buffers to the frame we just rendered
-   glXSwapBuffers( xvars->xdisplay, xvars->glxwin );
+   glXSwapBuffers( xvars->xdisplay, xvars->xwindow );
 
    return 0;
 }
