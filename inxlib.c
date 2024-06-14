@@ -74,7 +74,7 @@ int xwindow_setup( struct my_xwin_vars *xvars,
                      GLX_DOUBLEBUFFER, True,
                      None };   // this line terminates the list
 #else
-   int glx_attr[] ={
+   int glx_attr[] ={ GLX_RGBA,
                      GLX_X_RENDERABLE, True,
                      GLX_DRAWABLE_TYPE,
                      GLX_WINDOW_BIT,
@@ -313,6 +313,7 @@ int xwindow_setup( struct my_xwin_vars *xvars,
    // make sure the second GLX context is unuseable
    xvars->glxc2 = NULL;
 
+#ifndef _OLDSTYLE_
    //
    // make a GLX window (this is for high-performance applications)
    //
@@ -320,9 +321,7 @@ int xwindow_setup( struct my_xwin_vars *xvars,
                                     xvars->xwindow, NULL );
    if( !(xvars->glxwin) ) {
       fprintf( stderr, " [Error]  Could not create a GLX area! \n" );
-#ifndef _OLDSTYLE_
       XFree( fbconfig );
-#endif
       XFree( visinfo );
       glXDestroyContext( xvars->xdisplay, xvars->glxc );
       glXDestroyContext( xvars->xdisplay, xvars->glxc2 );
@@ -332,6 +331,7 @@ int xwindow_setup( struct my_xwin_vars *xvars,
       xvars->xdisplay = NULL;
       return 8;
    }
+#endif
 
    //
    // make this the current OpenGL context (does not harm)
@@ -642,6 +642,7 @@ int xwindow_setup_dualglx( struct my_xwin_vars *xvars,
       return 7;
    }
 
+#ifndef _OLDSTYLE_
    //
    // make a GLX window (this is for high-performance applications)
    //
@@ -649,9 +650,7 @@ int xwindow_setup_dualglx( struct my_xwin_vars *xvars,
                                     xvars->xwindow, NULL );
    if( !(xvars->glxwin) ) {
       fprintf( stderr, " [Error]  Could not create a GLX area! \n" );
-#ifndef _OLDSTYLE_
       XFree( fbconfig );
-#endif
       XFree( visinfo );
       glXDestroyContext( xvars->xdisplay, xvars->glxc );
       glXDestroyContext( xvars->xdisplay, xvars->glxc2 );
@@ -661,6 +660,7 @@ int xwindow_setup_dualglx( struct my_xwin_vars *xvars,
       xvars->xdisplay = NULL;
       return 8;
    }
+#endif
 
    //
    // make this the current OpenGL context (does not harm)
@@ -722,12 +722,14 @@ int xwindow_close( struct my_xwin_vars *xvars )
    fprintf( stderr, " [INFO]  Released GLX context \n" );
    xvars->glxc = NULL;
 
+#ifndef _OLDSTYLE_
    //
    // Destroy GLX area
    //
    glXDestroyWindow( xvars->xdisplay, xvars->glxwin );
    fprintf( stderr, " [INFO]  Destroyed GLX area \n" );
    xvars->glxwin = 0;
+#endif
 
    //
    // Destroy window
