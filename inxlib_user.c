@@ -41,6 +41,13 @@ static int global_cursor_x=0, global_cursor_y=0, do_draw_cursor=0;
 
 int user_draw( struct my_xwin_vars *xvars, void *data )
 {
+#ifdef _NO_GLX_WIN_
+   glXMakeCurrent( xvars->xdisplay, xvars->xwindow, xvars->glxc );
+#else
+   glXMakeContextCurrent( xvars->xdisplay, xvars->glxwin,
+                                           xvars->glxwin, xvars->glxc );
+#endif
+
 #ifdef _CASE1_
    // DEMO 1
    // We ignore all user data for this demo (no use of the "void *data" pointer)
@@ -74,7 +81,6 @@ int user_draw( struct my_xwin_vars *xvars, void *data )
 
 #ifdef _DEBUG_FONT_
    if( do_draw_cursor ) {
-      glXMakeCurrent( xvars->xdisplay, xvars->xwindow, xvars->glxc );
       glColor3f( 0.2, 1.0, 0.2 );
       glWindowPos2i( global_cursor_x, xvars->win_height - global_cursor_y );
       glListBase( xvars->font_base );
@@ -84,7 +90,12 @@ int user_draw( struct my_xwin_vars *xvars, void *data )
 #endif
 
    // swap the buffers to the frame we just rendered
+   // (make sure the current drawble's buffers are swapped!)
+#ifdef _NO_GLX_WIN_
    glXSwapBuffers( xvars->xdisplay, xvars->xwindow );
+#else
+   glXSwapBuffers( xvars->xdisplay, xvars->glxwin );
+#endif
 
    return 0;
 }

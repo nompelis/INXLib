@@ -17,7 +17,7 @@ LIBS = $(XLIBS) -lm -lpthread
 
 all:
 	$(CC) -c $(DEBUG) $(COPTS) -Dno_OLDSTYLE_ inxlib.c
-	$(CC) -c $(DEBUG) $(COPTS) -D_CASE3_ inxlib_user.c
+	$(CC) -c $(DEBUG) $(COPTS) -Dno_NO_GLX_WIN_ -D_CASE3_ inxlib_user.c
 	$(CC) -c $(DEBUG) $(COPTS) inogl.c
 	$(CC)    $(DEBUG) $(COPTS) test.c inxlib.o inxlib_user.o inogl.o $(LIBS)
 
