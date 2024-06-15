@@ -74,14 +74,11 @@ int xwindow_setup( struct my_xwin_vars *xvars,
                      GLX_DOUBLEBUFFER, True,
                      None };   // this line terminates the list
 #else
-   int glx_attr[] ={ GLX_RGBA,
+   int glx_attr[] ={
                      GLX_X_RENDERABLE, True,
-                     GLX_DRAWABLE_TYPE,
-                     GLX_WINDOW_BIT,
-                     GLX_RENDER_TYPE,
-                     GLX_RGBA_BIT,
-                     GLX_X_VISUAL_TYPE,
-                     GLX_TRUE_COLOR,
+                     GLX_DRAWABLE_TYPE, GLX_WINDOW_BIT,
+                     GLX_RENDER_TYPE, GLX_RGBA_BIT,
+                     GLX_X_VISUAL_TYPE, GLX_TRUE_COLOR,
                      GLX_RED_SIZE, 8,
                      GLX_GREEN_SIZE, 8,
                      GLX_BLUE_SIZE, 8,
@@ -350,6 +347,14 @@ int xwindow_setup( struct my_xwin_vars *xvars,
    XFree( fbconfig );
 #endif
    XFree( visinfo );
+
+   //
+   // Set some variables that may be unsued
+   //
+#ifndef _OLDSTYLE_
+   xvars->pbuffer = 0;
+   xvars->glxcoff = 0;
+#endif
 
    //
    // Set the internal variable for user-guided termination of the library
@@ -681,12 +686,109 @@ int xwindow_setup_dualglx( struct my_xwin_vars *xvars,
    XFree( visinfo );
 
    //
+   // Set some variables that may be unsued
+   //
+#ifndef _OLDSTYLE_
+   xvars->pbuffer = 0;
+   xvars->glxcoff = 0;
+#endif
+
+   //
    // Set the internal variable for user-guided termination of the library
    //
    xvars->iterm_loop = 0;
 
    return 0;
 }
+
+
+#ifndef _OLDSTYLE_
+/**
+// @details
+//
+// Function to create an off-screen rendering drawable with associated OpenGL
+// rendering context
+//
+// @author Ioannis Nompelis <nompelis@nobelware.com>
+*/
+int xwindow_setup_offscreen( struct my_xwin_vars *xvars,
+                             unsigned int width, unsigned int height )
+{
+   // for requesting a framebuffer configuration
+   int fboff_attr[] ={
+                       GLX_X_RENDERABLE, True,
+                       GLX_DRAWABLE_TYPE, GLX_PBUFFER_BIT,
+                       GLX_RENDER_TYPE, GLX_RGBA_BIT,
+                       GLX_X_VISUAL_TYPE, GLX_TRUE_COLOR,
+                       GLX_RED_SIZE, 8,
+                       GLX_GREEN_SIZE, 8,
+                       GLX_BLUE_SIZE, 8,
+                       GLX_ALPHA_SIZE, 8,
+                       GLX_DEPTH_SIZE, 24,
+                       GLX_STENCIL_SIZE, 8,
+                       None };   // this line terminates the list
+
+   //
+   // retrieve a framebuffer configuration
+   //
+   int fbcount;
+   GLXFBConfig *fbconfig = glXChooseFBConfig( xvars->xdisplay, xvars->xscreen,
+                                              fboff_attr, &fbcount );
+   if( !fbconfig ) {
+      fprintf( stderr, " [Error]  Failed to retrieve a framebuffer config\n" );
+      return 3;
+   } else {
+      fprintf( stderr, " [INFO]  Number of FB config: %d \n", fbcount );
+   }
+
+
+   //
+   // create a pbuffer
+   //
+   static int pbuffer_attribs[] = {
+      GLX_PBUFFER_WIDTH, 800,
+      GLX_PBUFFER_HEIGHT, 600,
+      None
+   };
+   // over-write with non-constant numbers
+   pbuffer_attribs[1] = width;
+   pbuffer_attribs[3] = height;
+
+   xvars->pbuffer = glXCreatePbuffer( xvars->xdisplay, fbconfig[0],
+                                      pbuffer_attribs );
+   if( !(xvars->pbuffer) ) {
+      fprintf( stderr, " [Error]  Unable to create Pbuffer \n" );
+      return 4;
+   }
+
+   //
+   // create a GLX context just for the pbuffer
+   //
+   xvars->glxcoff = glXCreateNewContext( xvars->xdisplay, fbconfig[0],
+                                         GLX_RGBA_TYPE,
+                                         xvars->glxc, True );
+   if( xvars->glxcoff == NULL ) {
+      fprintf( stderr, " [Error]  Could not create GLX context!\n" );
+      XFree( fbconfig );
+      return 6;
+   }
+
+   //
+   // Drop structures we no longer need
+   //
+   XFree( fbconfig );
+
+   xvars->pb_width = width;
+   xvars->pb_height = height;
+#ifdef _DEBUG_
+   fprintf( stderr, " [INFO]  Off-screen FB: %d x %d (handle %ld) \n",
+            xvars->pb_width, xvars->pb_height,
+            xvars->pbuffer );
+#endif
+
+   return 0;
+}
+#endif
 
 
 void xwindow_query_glxversion( struct my_xwin_vars *xvars )
@@ -709,6 +811,16 @@ void xwindow_query_glxversion( struct my_xwin_vars *xvars )
 */
 int xwindow_close( struct my_xwin_vars *xvars )
 {
+#ifndef _OLDSTYLE_
+   //
+   // Destroy the Pbuffer and its OpenGL context if they exist
+   //
+   if( xvars->pbuffer != 0 ) {
+      glXDestroyPbuffer( xvars->xdisplay, xvars->pbuffer );
+      glXDestroyContext( xvars->xdisplay, xvars->glxcoff );
+      fprintf( stderr, " [INFO]  Released Pbuffer and its GLX context \n" );
+   }
+#endif
 
    //
    // Destroy the OpenGL context

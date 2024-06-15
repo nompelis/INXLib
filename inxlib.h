@@ -39,6 +39,11 @@ struct my_xwin_vars {
    GLXWindow glxwin;
    GLXContext glxc;
    GLXContext glxc2;
+#ifndef _OLDSTYLE_
+   GLXPbuffer pbuffer;
+   GLXContext glxcoff;
+   unsigned int pb_width, pb_height;
+#endif
 
    char window_name[100];
    unsigned int win_height;
@@ -104,6 +109,16 @@ int xwindow_setup( struct my_xwin_vars *xvars,
 int xwindow_setup_dualglx( struct my_xwin_vars *xvars,
                            int width, int height, int xpos, int ypos,
                            int iframe );
+
+#ifndef _OLDSTYLE_
+/**
+// @brief
+// A function to create an off-screen framebuffer with a GLX OpenGL context
+// that shares resources with the first of the existing contexts
+*/
+int xwindow_setup_offscreen( struct my_xwin_vars *xvars,
+                             unsigned int width, unsigned int height );
+#endif
 
 void xwindow_query_glxversion( struct my_xwin_vars *xvars );
 

@@ -3,7 +3,7 @@
  INXlib v0.6
  A simple skeleton framework for building X11 windowed applications with XLib's
  GLX OpenGL context for high-performance (hardware accelerated) 3D graphics.
- Copyright 2016-2023 Ioannis Nompelis
+ Copyright 2016-2024 Ioannis Nompelis
 
 TL;DR - You can use this code to understand how to open a window, setup the
 OpenGL "fixed" and "programmable" rasterization/rendering pipelines, trap
