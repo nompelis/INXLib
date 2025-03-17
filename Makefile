@@ -15,7 +15,7 @@ CXXOPTS += -D  _STRICT_CPP_
 LIBS = $(XLIBS) -lm -lpthread
 
 
-all:
+all: lib
 	$(CC)    $(DEBUG) $(COPTS) test.c -ldl
 
 lib:
