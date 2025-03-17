@@ -345,7 +345,7 @@ int inMakeAxisSphereshell3( int im, int jm, float **x )
             data[k][3] = data[0][0];
             data[k][4] = data[0][1];
             data[k][5] = data[0][2];
-            // texell
+            // texel
             data[k][6] = (float) ksi;
             data[k][7] = (float) eta;
             // colour has latitudinal variations
