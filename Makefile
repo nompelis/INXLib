@@ -16,16 +16,22 @@ LIBS = $(XLIBS) -lm -lpthread
 
 
 all:
+	$(CC)    $(DEBUG) $(COPTS) test.c -ldl
+
+lib:
 	$(CC) -c $(DEBUG) $(COPTS) -Dno_OLDSTYLE_ inxlib.c
 	$(CC) -c $(DEBUG) $(COPTS) -Dno_NO_GLX_WIN_ -D_CASE3_ inxlib_user.c
 	$(CC) -c $(DEBUG) $(COPTS) inogl.c
-	$(CC)    $(DEBUG) $(COPTS) test.c inxlib.o inxlib_user.o inogl.o $(LIBS)
+	$(CC) -c $(DEBUG) $(COPTS) inxlib_gui.c
+	$(CC) -shared -Wl,-soname,libINXlib.so -o libINXlib.so \
+              inxlib_gui.o inxlib.o inxlib_user.o inogl.o $(LIBS)
+	$(CC)    $(DEBUG) $(COPTS) test.c -ldl
 
 doc:
 	doxygen Doxyfile
 
 clean:
-	rm -f *.o *.a a.out
+	rm -f *.o *.a *.so a.out
 	rm -Rf doxygen_doc
 
 

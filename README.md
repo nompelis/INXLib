@@ -1,6 +1,6 @@
-# INXLib v0.6
+# INXLib v0.7
 
- INXlib v0.6
+ INXlib v0.7
  A simple skeleton framework for building X11 windowed applications with XLib's
  GLX OpenGL context for high-performance (hardware accelerated) 3D graphics.
  Copyright 2016-2024 Ioannis Nompelis
@@ -96,4 +96,4 @@ my dear friend, ChatGPT.
 The documentation can be built with Doxygen, and it contains only the very
 essentials.
 
-IN 2023/12/09
+IN 2024/03/17
